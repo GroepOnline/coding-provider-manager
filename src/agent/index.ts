@@ -1,5 +1,5 @@
 import readline from "node:readline";
-import type { AgentRequest, AgentResponse, ProviderId } from "../types.js";
+import type { AgentRequest, AgentResponse } from "../types.js";
 import { providers, getProvider } from "../providers/catalog.js";
 import { adapters } from "../adapters/index.js";
 import { detectAdapters } from "../core/detect.js";
@@ -9,6 +9,7 @@ import { accountDriverSummaries, accountDriverStatus, listDriverAccounts, nextDr
 import { fetchUsageTarget, saveUsageCache, selectBestProviderKey } from "../usage/index.js";
 import { resolveProviderModels } from "../providers/models.js";
 import { loadRegistry } from "../resources/registry.js";
+import { applyExecute, doctorRun, keysAdd, planPreview, syncStatus } from "./operations.js";
 
 export const agentMethods = [
   "system.status",
@@ -17,6 +18,7 @@ export const agentMethods = [
   "apps.list",
   "resources.list",
   "keys.list",
+  "keys.add",
   "keys.use",
   "keys.next",
   "keys.best",
@@ -26,6 +28,10 @@ export const agentMethods = [
   "accounts.next",
   "accounts.status",
   "usage.get",
+  "plan.preview",
+  "apply.execute",
+  "doctor.run",
+  "sync.status",
 ] as const;
 
 export function agentManifest() {
@@ -73,6 +79,10 @@ export async function dispatchAgentRequest(home: string, request: AgentRequest):
         result = await listSecrets(home, providerScope(provider.id), { [provider.keyEnv]: process.env[provider.keyEnv] });
         break;
       }
+      case "keys.add": {
+        result = await keysAdd(home, params);
+        break;
+      }
       case "keys.use": {
         const provider = getProvider(requiredString(params, "provider"));
         const alias = requiredString(params, "alias");
@@ -112,6 +122,22 @@ export async function dispatchAgentRequest(home: string, request: AgentRequest):
         const values = await fetchUsageTarget(home, target, { allKeys: params.allKeys === true, alias: typeof params.alias === "string" ? params.alias : undefined });
         await saveUsageCache(home, values);
         result = values;
+        break;
+      }
+      case "plan.preview": {
+        result = await planPreview(home, params);
+        break;
+      }
+      case "apply.execute": {
+        result = await applyExecute(home, params);
+        break;
+      }
+      case "doctor.run": {
+        result = await doctorRun(home, params);
+        break;
+      }
+      case "sync.status": {
+        result = await syncStatus(home);
         break;
       }
       default: return { ...(request.id !== undefined ? { id: request.id } : {}), ok: false, error: { code: "METHOD_NOT_FOUND", message: `Unknown method: ${request.method}` } };
