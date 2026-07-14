@@ -29,6 +29,8 @@
     "cpm": "node dist/cli.js",
     "test": "vitest run",
     "check": "tsc --noEmit && npm test && npm run build",
+    "ci": "npm run check",
+    "verify": "npm run check",
     "prepack": "npm run build"
   },
   "engines": {
