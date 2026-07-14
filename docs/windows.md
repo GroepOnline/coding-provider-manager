@@ -1,6 +1,6 @@
 # Windows notes
 
-CPM is developed and documented primarily with **PowerShell** examples. This page covers Windows-specific paths, install quirks, and common failure modes. Use native PowerShell or Windows Terminal — **WSL is not required**.
+CPM is documented with **PowerShell** examples. Use native PowerShell or Windows Terminal — **WSL is not required**.
 
 ## State directory
 
@@ -16,11 +16,9 @@ Typical expanded path:
 C:\Users\<you>\AppData\Roaming\coding-provider-manager
 ```
 
-Resolution order for the home directory is `HOME`, then `USERPROFILE`, then the OS home. Config root prefers `APPDATA` when that home matches the process home.
+Home resolution: `HOME`, then `USERPROFILE`, then the OS home. Config root prefers `APPDATA` when that home matches the process home.
 
-On Linux/macOS the same tree lives under `~/.config/coding-provider-manager` (or `$XDG_CONFIG_HOME/coding-provider-manager`).
-
-Inspect status without digging through files:
+On Linux/macOS the same tree lives under `~/.config/coding-provider-manager` (or `$XDG_CONFIG_HOME/coding-provider-manager`). There is **no** `~/.cpm` directory.
 
 ```powershell
 cpm status
@@ -30,8 +28,7 @@ cpm doctor
 ## Install from source
 
 ```powershell
-# Node 20+ on PATH
-node --version
+node --version   # Node 20+
 
 cd <repo-root>
 npm install
@@ -45,7 +42,6 @@ Without a global link:
 ```powershell
 npm run build
 node .\dist\cli.js --version
-npm start -- --version
 ```
 
 Packed smoke test:
@@ -61,45 +57,84 @@ cpm --version
 `cpm` and `cpm tui` need optional dependency `@opentui/core` (and its Bun-backed runner when required).
 
 - Install **with** optional dependencies (default `npm install`).
-- If you used `--omit=optional` or a lockfile that dropped optionals, non-interactive commands still work; TUI will not.
-- Fix: reinstall with optionals enabled, or set `CPM_BUN_BIN` to a working Bun binary if the runner cannot locate one.
-- For CI or headless checks without a real TTY: `cpm tui --snapshot`.
+- `--omit=optional` keeps non-interactive commands; TUI will fail.
+- Fix: reinstall with optionals, or set `CPM_BUN_BIN` to a working Bun binary.
+- Headless / CI: `cpm tui --snapshot` dumps the dashboard model without rendering.
 
-Bare `cpm` only opens the TUI when both stdin and stdout are terminals. In pipes, VS Code tasks, or non-TTY hosts it prints the agent manifest instead.
+Bare `cpm` opens the TUI only when stdin and stdout are terminals. Pipes, VS Code tasks, and non-TTY hosts get the agent manifest instead.
 
-## SSH sync
+## OpenSSH sync
 
-`cpm sync …` expects an `ssh` client on `PATH` (OpenSSH Client optional feature on Windows 10/11).
+`cpm sync …` shells out to `ssh` on `PATH` (Windows optional feature **OpenSSH Client**).
 
 ```powershell
 Get-Command ssh
-cpm sync push <host-alias>
+# Settings → Apps → Optional features → OpenSSH Client, if missing
+
+# ~/.ssh/config Host alias works the same as on Unix
+cpm sync push bc-scan-arm
+cpm sync push bc-scan-arm --apply
+cpm sync push bc-scan-arm --secrets --apply
+cpm sync pull bc-scan-arm
 ```
 
-Enable **OpenSSH Client** under *Settings → Apps → Optional features* if `ssh` is missing. Agent forwarding and remote shell quirks are outside CPM — treat sync like any other SSH-based tool.
+- Normal bundles exclude the encrypted vault and client-owned OAuth state.
+- `--secrets` decrypts only in memory, sends values over SSH stdin, and re-encrypts with the remote master key.
+- Remote must already have `cpm` (or pass `--remote-command`).
+- For headless remotes, set a base64 32-byte `CPM_MASTER_KEY` on both sides when you need deterministic vault keys.
+
+## GitHub CLI (`gh`) account pool
+
+The `github` account driver uses the official GitHub CLI:
+
+```powershell
+Get-Command gh
+winget install --id GitHub.cli   # if needed
+
+cpm auth login github-cli
+cpm accounts list github
+cpm accounts use github github.com:<account>
+cpm run copilot-cli --account github.com:<account>
+```
+
+CPM does not copy GitHub tokens into the vault; it drives `gh` for list/use/next/status.
+
+## PowerShell environment write
+
+Materialize active provider keys as a `.ps1` you can dot-source (contains plaintext secrets — treat like a password file):
+
+```powershell
+cpm env write --shell powershell
+cpm env path --shell powershell
+# → %APPDATA%\coding-provider-manager\env\active.ps1
+
+. (cpm env path --shell powershell)
+# or
+. "$env:APPDATA\coding-provider-manager\env\active.ps1"
+```
+
+Lines look like `$env:OPENROUTER_API_KEY = '…'`. Prefer `cpm run <tool>` when you only need secrets for one child process. On Windows, NTFS ACLs on the CPM state folder replace Unix `0600`.
 
 ## Secrets and file modes
 
-Unix installs chmod secret/env files to `0600`. Windows has no equivalent POSIX mode; protect the CPM state folder with NTFS ACLs and your Windows user account instead. Prefer `CPM_MASTER_KEY` (base64-encoded 32-byte key) for deterministic headless/CI installs rather than relying on a machine-local master key file when sharing images or profiles.
+Prefer `CPM_MASTER_KEY` (base64-encoded 32-byte key) for deterministic headless/CI installs rather than committing a machine-local `master.key`.
 
 ## PowerShell tips
 
-- Pass JSON params with single-quoted strings so PowerShell does not expand braces:
+```powershell
+# Single-quote JSON so braces are not expanded
+cpm agent call keys.next --params '{"provider":"openrouter"}'
 
-  ```powershell
-  cpm agent call keys.next --params '{"provider":"openrouter"}'
-  ```
+# Pipe secrets — avoid putting keys in shell history
+$env:OPENROUTER_API_KEY | cpm key add openrouter primary
+```
 
-- Pipe secrets from the environment, not from shell history:
-
-  ```powershell
-  $env:OPENROUTER_API_KEY | cpm key add openrouter primary
-  ```
-
-- Multi-line remote MCP configs: use a here-string or a temp JSON file rather than nested escaping.
+Multi-line MCP configs: use a here-string or a temp JSON file.
 
 ## Related docs
 
-- [README](../README.md) — install, quick start, command overview
-- [compatibility.md](compatibility.md) — provider and surface matrix
+- [README](../README.md) — install, quick start, troubleshooting
+- [adapter-capabilities.md](adapter-capabilities.md) — automatic vs guided vs none
+- [cli-reference.md](cli-reference.md) — command map (`cpm --help` is authoritative)
+- [compatibility.md](compatibility.md) — provider / MCP matrix
 - [agent-protocol.md](agent-protocol.md) — JSONL automation

@@ -311,7 +311,9 @@ Still stuck: `cpm status`, `cpm doctor`, and `cpm agent manifest` are the safest
 | Doc | Topic |
 |---|---|
 | [CHANGELOG.md](CHANGELOG.md) | Release history (Keep a Changelog) |
-| [docs/windows.md](docs/windows.md) | Windows paths, OpenTUI, SSH, PowerShell tips |
+| [docs/windows.md](docs/windows.md) | Windows paths, OpenSSH sync, `gh`, PowerShell `env write`, OpenTUI |
+| [docs/adapter-capabilities.md](docs/adapter-capabilities.md) | Automatic vs guided vs none adapter matrix |
+| [docs/cli-reference.md](docs/cli-reference.md) | Light command map (`cpm --help` is authoritative) |
 | [docs/architecture.md](docs/architecture.md) | Control-plane layers, auth boundary, protocol routing, SSH |
 | [docs/compatibility.md](docs/compatibility.md) | Provider injection matrix, OAuth flows, MCP writers |
 | [docs/agent-protocol.md](docs/agent-protocol.md) | JSONL agent protocol |

@@ -37,8 +37,8 @@ secrets/
 credentials.json
 service-account*.json
 
-# Local CPM runtime state (if linked into workspace)
-.cpm/
+# CPM runtime state lives outside the repo (%APPDATA%\coding-provider-manager
+# or ~/.config/coding-provider-manager) — never ~/.cpm.
 
 # Python (local tooling / scripts)
 __pycache__/
