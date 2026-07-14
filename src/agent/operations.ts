@@ -121,7 +121,7 @@ export async function applyPlannedChanges(
     return backupId;
   } catch (error) {
     await rollbackBackup(backupId, home);
-    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`);
+    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`, { cause: error });
   }
 }
 
