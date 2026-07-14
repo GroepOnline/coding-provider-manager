@@ -37,8 +37,13 @@ secrets/
 credentials.json
 service-account*.json
 
-# CPM runtime state lives outside the repo (%APPDATA%\coding-provider-manager
-# or ~/.config/coding-provider-manager) — never ~/.cpm.
+# CPM runtime state lives outside the repo — never ~/.cpm.
+# Canonical: %APPDATA%\coding-provider-manager (Windows),
+# ~/.config/coding-provider-manager (Unix / $XDG_CONFIG_HOME).
+# Ignore accidental workspace copies / legacy names:
+.config/coding-provider-manager/
+AppData/Roaming/coding-provider-manager/
+.cpm/
 
 # Python (local tooling / scripts)
 __pycache__/
