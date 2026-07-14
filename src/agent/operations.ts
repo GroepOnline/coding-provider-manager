@@ -1,6 +1,9 @@
 import { adapters, adapterMap } from "../adapters/index.js";
+import { accountDriverSummaries } from "../accounts/index.js";
+import { authFlows, getAuthFlow } from "../auth/catalog.js";
 import { atomicWrite } from "../core/fs.js";
 import { createBackup, rollbackBackup } from "../core/backup.js";
+import { commandExists, detectAdapters } from "../core/detect.js";
 import { loadState, updateProviderPreference } from "../core/state.js";
 import { createSyncBundle } from "../core/sync.js";
 import {
@@ -10,16 +13,18 @@ import {
   providerScope,
   resolveSecret,
 } from "../core/vault.js";
-import { getProvider } from "../providers/catalog.js";
+import { getProvider, providers } from "../providers/catalog.js";
 import { fetchProviderModels, probeProvider, resolveProviderModels } from "../providers/models.js";
 import { planMcpResources } from "../resources/apply.js";
 import { loadRegistry } from "../resources/registry.js";
 import { nativeUsageSupportMatrix, providerSupportsNativeUsage } from "../usage/index.js";
 import type {
   AdapterContext,
+  ManagedResource,
   PlannedChange,
   ProviderId,
   ProviderProfile,
+  ResourceKind,
   ToolId,
 } from "../types.js";
 
@@ -283,5 +288,115 @@ export async function syncStatus(home: string): Promise<unknown> {
     secretScopes: vaultScopes.size,
     secretsIncluded: false,
     pullRequiresHost: true,
+  };
+}
+
+function redactResourceConfig(config: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(config)) {
+    if (/token|secret|password|cookie|credential|api.?key|authorization|bearer/i.test(key)) {
+      out[key] = "[redacted]";
+      continue;
+    }
+    if (typeof value === "string" && /sk-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-/i.test(value)) {
+      out[key] = "[redacted]";
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+function summarizeResource(resource: ManagedResource): Record<string, unknown> {
+  return {
+    id: resource.id,
+    kind: resource.kind,
+    displayName: resource.displayName,
+    enabled: resource.enabled,
+    targets: resource.targets,
+    config: redactResourceConfig(resource.config ?? {}),
+    secretRefs: resource.secretRefs
+      ? Object.fromEntries(
+          Object.entries(resource.secretRefs).map(([envName, ref]) => [
+            envName,
+            { scope: ref.scope, ...(ref.keyAlias ? { keyAlias: ref.keyAlias } : {}), valueIncluded: false },
+          ]),
+        )
+      : undefined,
+    preferences: resource.preferences,
+  };
+}
+
+/** CLI-parity `resource list` — optional kind filter; never resolves vault values. */
+export async function resourceList(
+  home: string,
+  params: Record<string, unknown> = {},
+): Promise<{ total: number; enabled: number; resources: Array<Record<string, unknown>> }> {
+  const kind = optionalString(params, "kind") as ResourceKind | undefined;
+  if (kind && !["mcp", "plugin", "integration", "graph"].includes(kind)) {
+    throw new Error(`Unknown resource kind: ${kind}`);
+  }
+  const registry = await loadRegistry(home);
+  const rows = kind ? registry.resources.filter((item) => item.kind === kind) : registry.resources;
+  return {
+    total: rows.length,
+    enabled: rows.filter((item) => item.enabled).length,
+    resources: rows.map(summarizeResource),
+  };
+}
+
+/** Safe auth overview — catalog + local readiness; does not run login/status CLIs or return secrets. */
+export async function authStatus(home: string, params: Record<string, unknown> = {}): Promise<unknown> {
+  const flowId = optionalString(params, "flow");
+  const flows = flowId ? [getAuthFlow(flowId)] : authFlows;
+  const state = await loadState(home);
+  const providerRows = [];
+  for (const provider of providers) {
+    const keys = await listSecrets(home, providerScope(provider.id), { [provider.keyEnv]: process.env[provider.keyEnv] });
+    const active = keys.find((item) => item.active);
+    providerRows.push({
+      id: provider.id,
+      authKind: provider.authKind,
+      oauthFlows: provider.oauthFlowIds ?? [],
+      enabled: state.providers[provider.id]?.enabled ?? false,
+      keyEnv: provider.keyEnv,
+      activeKey: active?.alias,
+      keyCount: keys.filter((item) => item.source === "vault" && !item.disabled).length,
+      hasKey: keys.some((item) => !item.disabled),
+      fingerprints: keys.map((item) => ({
+        alias: item.alias,
+        active: item.active,
+        source: item.source,
+        fingerprint: item.fingerprint,
+      })),
+    });
+  }
+  return {
+    interactiveRequired: false,
+    secretsReturned: false,
+    flows: flows.map((flow) => ({
+      id: flow.id,
+      displayName: flow.displayName,
+      kind: flow.kind,
+      tool: flow.tool,
+      provider: flow.provider,
+      command: flow.command,
+      commandInstalled: commandExists(flow.command),
+      statusSupported: Boolean(flow.statusArgs?.length),
+      headless: flow.headless ?? false,
+      notes: flow.notes ?? [],
+    })),
+    providers: providerRows,
+    accountDrivers: accountDriverSummaries(),
+  };
+}
+
+/** CLI-parity `cpm detect` / apps.list — local adapter detection only. */
+export function detectRun(): unknown {
+  const tools = detectAdapters(adapters);
+  return {
+    total: tools.length,
+    installed: tools.filter((item) => item.installed).length,
+    tools,
   };
 }

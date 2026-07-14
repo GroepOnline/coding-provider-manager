@@ -35,7 +35,8 @@ Errors use stable codes:
 | `providers.list` | — | providers with preferences and model counts |
 | `models.list` | `provider` | resolved model catalog for a provider |
 | `apps.list` | — | detected coding-tool adapters |
-| `resources.list` | — | managed MCP resources |
+| `resources.list` | optional `kind` | managed MCP resources (redacted configs; secret refs only) |
+| `resource.list` | optional `kind` | same as CLI `resource list` — `{ total, enabled, resources }` |
 | `keys.list` | `provider` | key-slot summaries (alias/fingerprint only) |
 | `keys.add` | `provider`, `value` **or** `fromEnv: true`; optional `alias` (default `default`), `inactive` | `{ provider, alias, active, fingerprint }` — raw key never returned |
 | `keys.use` | `provider`, `alias` | `{ provider, activeKey }` |
@@ -46,10 +47,12 @@ Errors use stable codes:
 | `accounts.use` | `driver`, `selector` | activates an account |
 | `accounts.next` | `driver` | rotates to next account |
 | `accounts.status` | `driver` | driver status |
+| `auth.status` | optional `flow` | auth-flow catalog + local readiness (commands installed, key aliases/fingerprints). Does not run login/status CLIs or return secrets |
 | `usage.get` | `target`; optional `allKeys`, `alias` | usage results |
 | `plan.preview` | optional `provider`, `tools`, `model`, `discover`, `makeDefault`, `saved` | per-provider plan summaries (`tool`, `status`, `path`, `notes`, `changed`) — no file bodies |
 | `apply.execute` | same as plan + optional `resources` | applies ready plans with backups; non-interactive (no confirm) |
 | `doctor.run` | optional `provider`, `model`, `alias`/`key`, `allKeys`, `probe` | auth (+ optional streaming/tool-call) probe results without secret values |
+| `detect.run` | — | local adapter detection (`cpm detect` / `apps.list` equivalent): `{ total, installed, tools }` |
 | `sync.status` | — | local sync readiness (state/resources/secret-scope counts). SSH pull/push stay CLI-only |
 
 ### `keys.add` security
@@ -59,3 +62,8 @@ Pass the secret only in `params.value` (or set the provider env var and pass `fr
 ### `plan.preview` / `apply.execute`
 
 Mirror `cpm plan` / `cpm apply --yes`. Plan summaries omit `before`/`after` bodies so config contents (and any accidental secrets) stay out of the protocol. `apply.execute` always applies without confirmation.
+
+### `auth.status` / `resource.list` / `detect.run`
+
+Safe read-only CLI parity. `auth.status` summarizes delegated auth flows and provider key readiness without spawning login/status tools. `resource.list` mirrors `cpm resource list` (optional `kind`) and never resolves vault secret values. `detect.run` mirrors `cpm detect` and returns the same adapter detection payload shape as `apps.list` under `tools`.
+

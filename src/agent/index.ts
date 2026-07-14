@@ -9,7 +9,16 @@ import { accountDriverSummaries, accountDriverStatus, listDriverAccounts, nextDr
 import { fetchUsageTarget, saveUsageCache, selectBestProviderKey } from "../usage/index.js";
 import { resolveProviderModels } from "../providers/models.js";
 import { loadRegistry } from "../resources/registry.js";
-import { applyExecute, doctorRun, keysAdd, planPreview, syncStatus } from "./operations.js";
+import {
+  applyExecute,
+  authStatus,
+  detectRun,
+  doctorRun,
+  keysAdd,
+  planPreview,
+  resourceList,
+  syncStatus,
+} from "./operations.js";
 
 export const agentMethods = [
   "system.status",
@@ -17,6 +26,7 @@ export const agentMethods = [
   "models.list",
   "apps.list",
   "resources.list",
+  "resource.list",
   "keys.list",
   "keys.add",
   "keys.use",
@@ -27,10 +37,12 @@ export const agentMethods = [
   "accounts.use",
   "accounts.next",
   "accounts.status",
+  "auth.status",
   "usage.get",
   "plan.preview",
   "apply.execute",
   "doctor.run",
+  "detect.run",
   "sync.status",
 ] as const;
 
@@ -73,7 +85,10 @@ export async function dispatchAgentRequest(home: string, request: AgentRequest):
         break;
       }
       case "apps.list": result = detectAdapters(adapters); break;
-      case "resources.list": result = (await loadRegistry(home)).resources; break;
+      case "resources.list": result = (await resourceList(home, params)).resources; break;
+      case "resource.list": result = await resourceList(home, params); break;
+      case "auth.status": result = await authStatus(home, params); break;
+      case "detect.run": result = detectRun(); break;
       case "keys.list": {
         const provider = getProvider(requiredString(params, "provider"));
         result = await listSecrets(home, providerScope(provider.id), { [provider.keyEnv]: process.env[provider.keyEnv] });
