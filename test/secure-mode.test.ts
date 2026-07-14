@@ -6,11 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   aiderDeskAdapter,
   antigravityAdapter,
-  cursorAdapter,
   vscodeAdapter,
-  windsurfAdapter,
   zedAdapter,
 } from "../src/adapters/manual.js";
+import { cursorAdapter, windsurfAdapter } from "../src/adapters/ide-guided.js";
 import { expandDetectPath } from "../src/core/detect.js";
 import { atomicWrite } from "../src/core/fs.js";
 import { lockdownSecretFile } from "../src/core/secure-mode.js";

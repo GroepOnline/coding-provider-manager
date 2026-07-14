@@ -16,9 +16,9 @@
 | Codex CLI | Automatic | Responses only | built-in auth or `env_key` |
 | Codex desktop app | Automatic shared host config | Responses only | Codex-owned auth or OS/runtime env |
 | Codex IDE extension | Automatic shared host config | Responses only | Codex-owned auth or IDE-host env |
-| Cline / Roo | Guided | app provider UI | extension secure storage |
-| Cursor | Guided provider; automatic MCP | app provider UI | Cursor secure storage |
-| Windsurf | Guided provider; automatic MCP | app provider UI | app secure storage |
+| Cline / Roo | Guided (Cline path-aware) | app provider UI | extension secure storage |
+| Cursor | Guided provider (path-aware); automatic MCP | app provider UI | Cursor secure storage |
+| Windsurf | Guided provider (path-aware); automatic MCP | app provider UI | app secure storage |
 | Goose / Zed / TRAE / Cody / Kimi CLI | Guided | target-specific | target-owned storage |
 | Gemini CLI | No arbitrary provider injection; automatic MCP | Google GenAI / Vertex | Google OAuth, API key or ADC |
 | GitHub Copilot | Account-owned | GitHub entitlement | GitHub device/browser auth |

@@ -21,6 +21,18 @@ export function cpmRoot(home = homeDir()): string {
   return path.join(configRoot(home), "coding-provider-manager");
 }
 
+/**
+ * Electron / VS Code-style application data root for a named app under `home`.
+ * Lists both macOS Application Support and configRoot layouts so probes work
+ * under fake test homes regardless of the host platform.
+ */
+export function electronAppRoots(home: string, appName: string): string[] {
+  return [
+    path.join(home, "Library", "Application Support", appName),
+    path.join(configRoot(home), appName),
+  ];
+}
+
 /** Normalize a path for CLI display (absolute, platform separators). */
 export function displayPath(value: string): string {
   return path.resolve(value);

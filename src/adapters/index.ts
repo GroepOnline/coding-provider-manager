@@ -11,8 +11,6 @@ import {
   antigravityAdapter,
   ampAdapter,
   augmentAdapter,
-  clineAdapter,
-  cursorAdapter,
   geminiCliAdapter,
   githubCopilotAdapter,
   gooseAdapter,
@@ -24,7 +22,6 @@ import {
   t3ChatAdapter,
   traeAdapter,
   vscodeAdapter,
-  windsurfAdapter,
   zedAdapter,
   copilotCliAdapter,
   amazonQAdapter,
@@ -46,6 +43,7 @@ import {
   boltAdapter,
   lovableAdapter,
 } from "./manual.js";
+import { clineAdapter, cursorAdapter, windsurfAdapter } from "./ide-guided.js";
 import { codexAdapter, codexAppAdapter, codexIdeAdapter } from "./codex.js";
 import { qwenCodeAdapter } from "./qwen.js";
 

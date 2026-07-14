@@ -49,19 +49,7 @@ function guided(id: ToolId, displayName: string, options: GuidedOptions = {}): T
   };
 }
 
-export const clineAdapter = guided("cline", "Cline", { commands: ["code", "cursor", "windsurf"], surfaces: ["extension", "ide"] });
 export const rooAdapter = guided("roo", "Roo Code", { commands: ["code", "cursor", "windsurf"], surfaces: ["extension", "ide"] });
-export const cursorAdapter = guided("cursor", "Cursor", {
-  command: "cursor",
-  paths: [
-    "/Applications/Cursor.app",
-    "%LOCALAPPDATA%/Programs/cursor/Cursor.exe",
-    "%LOCALAPPDATA%/Programs/Cursor/Cursor.exe",
-    "%ProgramFiles%/Cursor/Cursor.exe",
-  ],
-  surfaces: ["desktop", "ide"],
-  reason: "Cursor keeps API credentials in application secure storage. CPM only prepares the provider values and MCP config; it does not patch Cursor's databases.",
-});
 export const t3ChatAdapter = guided("t3-chat", "T3 Chat", {
   surfaces: ["web", "desktop"],
   providerInjection: "none",
@@ -77,15 +65,6 @@ export const antigravityAdapter = guided("antigravity", "Google Antigravity", {
   surfaces: ["desktop", "ide"],
   providerInjection: "none",
   reason: "Antigravity is treated as a Google-account coding surface; CPM has no verified arbitrary-provider BYOK contract for it.",
-});
-export const windsurfAdapter = guided("windsurf", "Windsurf", {
-  command: "windsurf",
-  paths: [
-    "/Applications/Windsurf.app",
-    "%LOCALAPPDATA%/Programs/Windsurf/Windsurf.exe",
-    "%ProgramFiles%/Windsurf/Windsurf.exe",
-  ],
-  surfaces: ["desktop", "ide"],
 });
 export const vscodeAdapter = guided("vscode", "Visual Studio Code", {
   command: "code",

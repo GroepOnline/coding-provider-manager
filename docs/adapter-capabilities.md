@@ -29,10 +29,10 @@ Matrix of coding-surface adapters registered in `src/adapters/index.ts`. Injecti
 
 | Tool ID | Display name |
 |---|---|
-| `cline` | Cline |
+| `cline` | Cline (path-aware guided — see Notes) |
 | `roo` | Roo Code |
-| `cursor` | Cursor |
-| `windsurf` | Windsurf |
+| `cursor` | Cursor (path-aware guided — see Notes) |
+| `windsurf` | Windsurf (path-aware guided — see Notes) |
 | `kimi-cli` | Kimi CLI |
 | `goose` | Goose |
 | `zed` | Zed |
@@ -76,4 +76,5 @@ Matrix of coding-surface adapters registered in `src/adapters/index.ts`. Injecti
 
 - Codex CLI, desktop, and IDE share one host config path (`~/.codex/config.toml`); see [architecture.md](architecture.md).
 - Higher-level provider contracts and MCP writers: [compatibility.md](compatibility.md).
+- Cursor / Windsurf / Cline stay **guided** for provider keys (secure storage / account-owned Cascade). Plans now attach verified config paths and copy-pasteable model/baseURL/keyEnv notes for `plan`/`apply`. MCP for Cursor and Windsurf remains automatic via resource writers.
 - Counts: 12 automatic, 20 guided, 17 none (49 adapters total).
