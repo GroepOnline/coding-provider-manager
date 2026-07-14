@@ -119,8 +119,25 @@ async function zaiUsage(provider: ProviderProfile, key: string, alias?: string):
   };
 }
 
-export function providerSupportsNativeUsage(id: ProviderId): boolean {
-  return id === "openrouter" || id === "deepseek" || id === "zai-coding";
+/** Providers with a verified public usage/balance/quota API. Do not invent adapters for the rest. */
+export const NATIVE_USAGE_PROVIDER_IDS = ["openrouter", "deepseek", "zai-coding"] as const satisfies readonly ProviderId[];
+
+export type NativeUsageProviderId = (typeof NATIVE_USAGE_PROVIDER_IDS)[number];
+
+export function providerSupportsNativeUsage(id: ProviderId): id is NativeUsageProviderId {
+  return (NATIVE_USAGE_PROVIDER_IDS as readonly string[]).includes(id);
+}
+
+export function nativeUsageAllowlistLabel(): string {
+  return NATIVE_USAGE_PROVIDER_IDS.join(", ");
+}
+
+export function unsupportedNativeUsageMessage(provider: ProviderProfile): string {
+  return `${provider.displayName} has no verified public account usage endpoint. Native usage / key best is supported for: ${nativeUsageAllowlistLabel()}. Use \`cpm key next ${provider.id}\` or \`cpm key use ${provider.id} <alias>\` to switch keys without quota scoring.`;
+}
+
+export function unsupportedKeyBestMessage(provider: ProviderProfile): string {
+  return `key best requires native usage for ${provider.id}. Supported providers: ${nativeUsageAllowlistLabel()}. Fallback: \`cpm key next ${provider.id}\` or \`cpm key use ${provider.id} <alias>\`.`;
 }
 
 export async function fetchProviderUsage(
@@ -130,13 +147,30 @@ export async function fetchProviderUsage(
 ): Promise<UsageResult> {
   const provider = typeof providerOrId === "string" ? getProvider(providerOrId) : providerOrId;
   if (!providerSupportsNativeUsage(provider.id)) {
-    return { target: provider.id, alias, source: "provider", available: false, fetchedAt: new Date().toISOString(), summary: `${provider.displayName} has no verified public account usage endpoint` };
+    return {
+      target: provider.id,
+      alias,
+      source: "provider",
+      available: false,
+      fetchedAt: new Date().toISOString(),
+      summary: unsupportedNativeUsageMessage(provider),
+      error: "native-usage-unsupported",
+    };
   }
   try {
     const secret = await resolveSecret(home, providerScope(provider.id), alias, provider.keyEnv);
-    if (provider.id === "openrouter") return await openRouterUsage(secret.value, secret.alias);
-    if (provider.id === "deepseek") return await deepSeekUsage(secret.value, secret.alias);
-    return await zaiUsage(provider, secret.value, secret.alias);
+    switch (provider.id) {
+      case "openrouter":
+        return await openRouterUsage(secret.value, secret.alias);
+      case "deepseek":
+        return await deepSeekUsage(secret.value, secret.alias);
+      case "zai-coding":
+        return await zaiUsage(provider, secret.value, secret.alias);
+      default: {
+        const _exhaustive: never = provider.id;
+        throw new Error(`Unhandled native usage provider: ${_exhaustive}`);
+      }
+    }
   } catch (error) {
     return { target: provider.id, alias, source: "provider", available: false, fetchedAt: new Date().toISOString(), summary: `${provider.displayName} usage unavailable`, error: (error as Error).message };
   }
@@ -154,9 +188,19 @@ export async function fetchAllProviderKeyUsage(home: string, providerOrId: Provi
 
 export async function selectBestProviderKey(home: string, providerOrId: ProviderProfile | ProviderId): Promise<UsageResult> {
   const provider = typeof providerOrId === "string" ? getProvider(providerOrId) : providerOrId;
+  if (!providerSupportsNativeUsage(provider.id)) {
+    throw new Error(unsupportedKeyBestMessage(provider));
+  }
   const results = await fetchAllProviderKeyUsage(home, provider);
   const candidates = results.filter((item) => item.available && item.alias && item.alias !== "environment");
-  if (!candidates.length) throw new Error(`No usable key usage result for ${provider.id}`);
+  if (!candidates.length) {
+    const hint = results.find((item) => item.error)?.error;
+    throw new Error(
+      `No usable key usage result for ${provider.id}. Ensure at least two named vault key slots exist and usage endpoints succeed.`
+      + (hint ? ` Last error: ${hint}` : "")
+      + ` Fallback: \`cpm key next ${provider.id}\`.`,
+    );
+  }
   const best = [...candidates].sort((a, b) => (b.score ?? Number.NEGATIVE_INFINITY) - (a.score ?? Number.NEGATIVE_INFINITY))[0]!;
   await useSecret(home, providerScope(provider.id), best.alias!);
   return best;

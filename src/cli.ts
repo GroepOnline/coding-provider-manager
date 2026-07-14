@@ -4,14 +4,28 @@ import { Command } from "commander";
 import { checkbox, confirm, input, password, select } from "@inquirer/prompts";
 import pc from "picocolors";
 import { adapters, adapterMap } from "./adapters/index.js";
-import { homeDir } from "./core/paths.js";
+import { displayPath, homeDir } from "./core/paths.js";
 import { detectAdapters } from "./core/detect.js";
 import { renderPlan } from "./core/render.js";
-import { atomicWrite, pathExists } from "./core/fs.js";
+import { atomicWrite } from "./core/fs.js";
 import { createBackup, listBackups, rollbackBackup } from "./core/backup.js";
 import { runInherited } from "./core/run.js";
+import {
+  applyCommandHelpGroups,
+  CLI_HELP_EXAMPLES,
+  formatUserFacingError,
+  inspectDependencies,
+  powershellCompletionScript,
+  resolveRuntimePaths,
+} from "./core/cli-dx.js";
 import { accountDriverSummaries, accountDriverStatus, accountDriverUsage, listDriverAccounts, nextDriverAccount, useDriverAccount } from "./accounts/index.js";
-import { fetchUsageTarget, saveUsageCache, selectBestProviderKey } from "./usage/index.js";
+import {
+  fetchUsageTarget,
+  nativeUsageAllowlistLabel,
+  providerSupportsNativeUsage,
+  saveUsageCache,
+  selectBestProviderKey,
+} from "./usage/index.js";
 import { agentManifest, dispatchAgentRequest, serveAgentJsonl } from "./agent/index.js";
 import { buildDashboardSnapshot, runTui } from "./tui/index.js";
 import { providers, getProvider, modelProtocol } from "./providers/catalog.js";
@@ -35,7 +49,6 @@ import { authFlows, getAuthFlow } from "./auth/catalog.js";
 import { runAuthCommand } from "./auth/run.js";
 import type {
   AdapterContext,
-  CpmState,
   ManagedResource,
   ProviderId,
   ProviderProfile,
@@ -46,7 +59,12 @@ import type {
 } from "./types.js";
 
 const program = new Command();
-program.name("cpm").description("Coding Provider Manager").version("0.4.0");
+program
+  .name("cpm")
+  .description("Coding Provider Manager — multi-provider keys, OAuth accounts, usage, coding tools, MCP and SSH sync")
+  .version("0.4.0")
+  .showHelpAfterError("(add --help for additional information)")
+  .addHelpText("after", `\n${CLI_HELP_EXAMPLES}\n`);
 program.action(async () => {
   if (process.stdin.isTTY && process.stdout.isTTY) await runTui(home);
   else console.log(JSON.stringify(agentManifest()));
@@ -260,7 +278,7 @@ accountsCommand.command("usage")
   });
 
 program.command("usage")
-  .description("Fetch provider balance/quota or external account-pool usage")
+  .description(`Fetch provider balance/quota or external account-pool usage (native providers: ${nativeUsageAllowlistLabel()})`)
   .argument("[target]", "provider/account driver ID or all", "all")
   .option("--key <alias>", "specific provider key alias")
   .option("--all-keys", "fetch every enabled key slot")
@@ -273,11 +291,19 @@ program.command("usage")
     for (const id of targets) results.push(...await fetchUsageTarget(home, id, { allKeys: Boolean(options.allKeys), alias: options.key }));
     await saveUsageCache(home, results);
     if (options.json) console.log(JSON.stringify(results, null, 2));
-    else for (const result of results) console.log(`${result.available ? pc.green("✓") : pc.dim("·")} ${result.target}${result.alias ? `:${result.alias}` : ""}  ${result.summary}${result.resetAt ? `  reset=${result.resetAt}` : ""}`);
+    else {
+      for (const result of results) {
+        const mark = result.available ? pc.green("✓") : result.error === "native-usage-unsupported" ? pc.yellow("!") : pc.dim("·");
+        console.log(`${mark} ${result.target}${result.alias ? `:${result.alias}` : ""}  ${result.summary}${result.resetAt ? `  reset=${result.resetAt}` : ""}`);
+      }
+      if (target === "all" && results.some((item) => item.error === "native-usage-unsupported")) {
+        console.log(pc.dim(`Native usage allowlist: ${nativeUsageAllowlistLabel()}. Other providers have no verified public usage API.`));
+      }
+    }
   });
 
 program.command("switch")
-  .description("One-command key/account switching")
+  .description("One-command key/account switching (best requires native usage providers)")
   .argument("<target>", "provider ID or account driver ID")
   .argument("[selector]", "key alias/account selector, next or best", "next")
   .option("--json")
@@ -292,6 +318,9 @@ program.command("switch")
     let alias: string | undefined;
     let result: unknown;
     if (selector === "best") {
+      if (!providerSupportsNativeUsage(provider.id)) {
+        throw new Error(`switch ${provider.id} best requires native usage. Supported: ${nativeUsageAllowlistLabel()}. Use \`cpm switch ${provider.id} next\` instead.`);
+      }
       const best = await selectBestProviderKey(home, provider);
       alias = best.alias;
       result = best;
@@ -584,10 +613,14 @@ keyCommand.command("next")
     if (options.json) console.log(JSON.stringify(result)); else console.log(pc.green(`Active ${provider.id} key: ${alias}`));
   });
 keyCommand.command("best")
+  .description(`Select the key with the best remaining quota (native usage: ${nativeUsageAllowlistLabel()})`)
   .argument("<provider>")
   .option("--json")
   .action(async (providerId, options) => {
     const provider = getProvider(providerId);
+    if (!providerSupportsNativeUsage(provider.id)) {
+      throw new Error(`key best requires native usage for ${provider.id}. Supported: ${nativeUsageAllowlistLabel()}. Use \`cpm key next ${provider.id}\` or \`cpm key use ${provider.id} <alias>\`.`);
+    }
     const best = await selectBestProviderKey(home, provider);
     await updateProviderPreference(home, provider.id, { activeKey: best.alias });
     await saveUsageCache(home, [best]);
@@ -698,13 +731,28 @@ program.command("apply")
   });
 
 program.command("doctor")
-  .description("Validate provider authentication, model listing and optional capabilities")
+  .description("Validate provider authentication, model listing, local paths and optional capabilities")
   .argument("[provider]")
   .option("-m, --model <id>", "model ID")
   .option("--key <alias>", "named key slot")
   .option("--all-keys", "test every enabled key slot")
   .option("--probe", "run chat, streaming and tool-call probes")
+  .option("--paths-only", "only print resolved Windows/Unix CPM paths and dependency status")
   .action(async (providerId, options) => {
+    const paths = resolveRuntimePaths(home);
+    const deps = inspectDependencies();
+    console.log(pc.bold("CPM paths"));
+    console.log(`  platform=${paths.platform}/${paths.arch}  node=${paths.node}`);
+    console.log(`  home=${displayPath(paths.home)}`);
+    console.log(`  configRoot=${displayPath(paths.configRoot)}`);
+    console.log(`  cpmRoot=${displayPath(paths.cpmRoot)}`);
+    if (paths.appData) console.log(`  APPDATA=${displayPath(paths.appData)}`);
+    if (paths.localAppData) console.log(`  LOCALAPPDATA=${displayPath(paths.localAppData)}`);
+    console.log(pc.bold("Dependencies"));
+    console.log(`  bun=${deps.bun.available ? pc.green("ok") : pc.yellow("missing")}${deps.bun.path ? ` (${deps.bun.path})` : ""}${deps.bun.hint && !deps.bun.available ? ` — ${deps.bun.hint}` : ""}`);
+    console.log(`  openTui=${deps.openTui.available ? pc.green("ok") : pc.yellow("missing")}${deps.openTui.hint && !deps.openTui.available ? ` — ${deps.openTui.hint}` : ""}`);
+    if (options.pathsOnly) return;
+
     const provider = getProvider(providerId || await activeProviderId());
     const summaries = options.allKeys
       ? (await listSecrets(home, providerScope(provider.id))).filter((item) => !item.disabled && item.source === "vault")
@@ -899,21 +947,64 @@ piZaiCommand.command("info").action(() => {
 });
 
 program.command("status")
+  .description("Show CPM root paths, dependency readiness and saved preferences")
   .option("--json")
   .action(async (options) => {
     const state = await loadState(home);
     const registry = await loadRegistry(home);
+    const paths = resolveRuntimePaths(home);
+    const deps = inspectDependencies();
+    const tools = detectAdapters(adapters);
     const result = {
       version: "0.4.0",
-      home,
-      state,
+      paths,
+      dependencies: deps,
+      nativeUsageProviders: nativeUsageAllowlistLabel().split(", "),
+      state: {
+        selectedProviders: state.selectedProviders ?? [],
+        updatedAt: state.updatedAt,
+        providerCount: Object.keys(state.providers).length,
+      },
       resources: { total: registry.resources.length, enabled: registry.resources.filter((item) => item.enabled).length },
-      tools: detectAdapters(adapters),
+      tools: {
+        total: tools.length,
+        installed: tools.filter((item) => item.installed).length,
+        rows: tools,
+      },
     };
     if (options.json) console.log(JSON.stringify(result, null, 2));
     else {
-      console.log(`CPM 0.4.0  root=${home}`);
-      console.log(`providers=${state.selectedProviders?.join(",") || "none"} resources=${result.resources.enabled}/${result.resources.total}`);
+      console.log(`CPM 0.4.0  platform=${paths.platform}  node=${paths.node}`);
+      console.log(`home=${displayPath(paths.home)}`);
+      console.log(`configRoot=${displayPath(paths.configRoot)}`);
+      console.log(`cpmRoot=${displayPath(paths.cpmRoot)}`);
+      if (paths.appData) console.log(`APPDATA=${displayPath(paths.appData)}`);
+      console.log(`bun=${deps.bun.available ? "ok" : "missing"}${deps.bun.path ? ` @ ${deps.bun.path}` : ""}`);
+      console.log(`openTui=${deps.openTui.available ? "ok" : "missing"}`);
+      console.log(`providers=${state.selectedProviders?.join(",") || "none"}  resources=${result.resources.enabled}/${result.resources.total}  tools=${result.tools.installed}/${result.tools.total}`);
+      console.log(`nativeUsage=${nativeUsageAllowlistLabel()}`);
+      if (!deps.bun.available && deps.bun.hint) console.log(pc.yellow(deps.bun.hint));
+      if (!deps.openTui.available && deps.openTui.hint) console.log(pc.yellow(deps.openTui.hint));
+    }
+  });
+
+program.command("completion")
+  .description("Print shell completion stub (PowerShell recommended on Windows)")
+  .argument("[shell]", "powershell | bash | zsh", "powershell")
+  .action((shell: string) => {
+    const normalized = shell.toLowerCase();
+    switch (normalized) {
+      case "powershell":
+      case "pwsh":
+        console.log(powershellCompletionScript("cpm"));
+        return;
+      case "bash":
+      case "zsh":
+        console.log(`# Minimal ${normalized} stub — prefer: complete -W "$(cpm --help)" cpm`);
+        console.log(`# Full PowerShell completion: cpm completion powershell`);
+        return;
+      default:
+        throw new Error(`Unsupported shell for completion: ${shell}. Use powershell, bash, or zsh.`);
     }
   });
 
@@ -928,7 +1019,9 @@ program.command("rollback").description("Restore a configuration backup").argume
   console.log(pc.green(`Restored backup ${selected}`));
 });
 
+applyCommandHelpGroups(program.commands);
+
 program.parseAsync().catch((error) => {
-  console.error(pc.red((error as Error).message));
+  console.error(pc.red(formatUserFacingError(error)));
   process.exitCode = 1;
 });

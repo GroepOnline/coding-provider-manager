@@ -53,7 +53,12 @@ export const clineAdapter = guided("cline", "Cline", { commands: ["code", "curso
 export const rooAdapter = guided("roo", "Roo Code", { commands: ["code", "cursor", "windsurf"], surfaces: ["extension", "ide"] });
 export const cursorAdapter = guided("cursor", "Cursor", {
   command: "cursor",
-  paths: ["/Applications/Cursor.app", "~/AppData/Local/Programs/cursor/Cursor.exe"],
+  paths: [
+    "/Applications/Cursor.app",
+    "%LOCALAPPDATA%/Programs/cursor/Cursor.exe",
+    "%LOCALAPPDATA%/Programs/Cursor/Cursor.exe",
+    "%ProgramFiles%/Cursor/Cursor.exe",
+  ],
   surfaces: ["desktop", "ide"],
   reason: "Cursor keeps API credentials in application secure storage. CPM only prepares the provider values and MCP config; it does not patch Cursor's databases.",
 });
@@ -64,19 +69,32 @@ export const t3ChatAdapter = guided("t3-chat", "T3 Chat", {
 });
 export const antigravityAdapter = guided("antigravity", "Google Antigravity", {
   commands: ["antigravity"],
-  paths: ["/Applications/Antigravity.app", "~/AppData/Local/Programs/Antigravity/Antigravity.exe"],
+  paths: [
+    "/Applications/Antigravity.app",
+    "%LOCALAPPDATA%/Programs/Antigravity/Antigravity.exe",
+    "%ProgramFiles%/Antigravity/Antigravity.exe",
+  ],
   surfaces: ["desktop", "ide"],
   providerInjection: "none",
   reason: "Antigravity is treated as a Google-account coding surface; CPM has no verified arbitrary-provider BYOK contract for it.",
 });
 export const windsurfAdapter = guided("windsurf", "Windsurf", {
   command: "windsurf",
-  paths: ["/Applications/Windsurf.app", "~/AppData/Local/Programs/Windsurf/Windsurf.exe"],
+  paths: [
+    "/Applications/Windsurf.app",
+    "%LOCALAPPDATA%/Programs/Windsurf/Windsurf.exe",
+    "%ProgramFiles%/Windsurf/Windsurf.exe",
+  ],
   surfaces: ["desktop", "ide"],
 });
 export const vscodeAdapter = guided("vscode", "Visual Studio Code", {
   command: "code",
-  paths: ["/Applications/Visual Studio Code.app"],
+  paths: [
+    "/Applications/Visual Studio Code.app",
+    "%LOCALAPPDATA%/Programs/Microsoft VS Code/Code.exe",
+    "%ProgramFiles%/Microsoft VS Code/Code.exe",
+    "%ProgramFiles(x86)%/Microsoft VS Code/Code.exe",
+  ],
   surfaces: ["desktop", "ide"],
   providerInjection: "none",
   reason: "VS Code itself is a host. Provider injection belongs to the selected extension; CPM manages those extension-specific adapters separately.",

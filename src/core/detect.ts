@@ -6,14 +6,27 @@ import type { ToolAdapter } from "../types.js";
 
 export function commandExists(command?: string): boolean {
   if (!command) return false;
-  const lookup = process.platform === "win32" ? "where" : "which";
-  return spawnSync(lookup, [command], { stdio: "ignore" }).status === 0;
+  if (process.platform === "win32") {
+    // where.exe is more reliable than bare `where` under non-shell spawn on Windows.
+    const result = spawnSync("where.exe", [command], { stdio: "ignore", windowsHide: true });
+    return result.status === 0;
+  }
+  return spawnSync("which", [command], { stdio: "ignore" }).status === 0;
 }
 
 function expandHome(value: string): string {
-  if (value === "~") return os.homedir();
-  if (value.startsWith("~/") || value.startsWith("~\\")) return path.join(os.homedir(), value.slice(2));
-  return value;
+  let expanded = value;
+  if (expanded === "~") return os.homedir();
+  if (expanded.startsWith("~/") || expanded.startsWith("~\\")) {
+    expanded = path.join(os.homedir(), expanded.slice(2));
+  }
+  if (process.platform === "win32") {
+    expanded = expanded.replace(/%([^%]+)%/g, (_match, name: string) => {
+      const fromEnv = process.env[name];
+      return fromEnv && fromEnv.length > 0 ? fromEnv : `%${name}%`;
+    });
+  }
+  return expanded;
 }
 
 function detectedCommand(adapter: ToolAdapter): string | undefined {

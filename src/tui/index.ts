@@ -1,7 +1,6 @@
-import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
 import { runInherited } from "../core/run.js";
+import { formatUserFacingError, resolveBunBinary, resolveOpenTuiStatus } from "../core/cli-dx.js";
 import type { ProviderId, UsageResult } from "../types.js";
 import { providers } from "../providers/catalog.js";
 import { loadState, updateProviderPreference } from "../core/state.js";
@@ -99,40 +98,34 @@ function renderSection(snapshot: DashboardSnapshot, tab: number, cursor: number)
   return `Managed resources: ${snapshot.resources.enabled}/${snapshot.resources.total} enabled\n\nUse cpm resource list --json for full detail.`;
 }
 
-function bundledBunBinary(): string | undefined {
-  try {
-    const require = createRequire(import.meta.url);
-    const packageJson = require.resolve("bun/package.json");
-    return path.join(path.dirname(packageJson), "bin", "bun.exe");
-  } catch {
-    return undefined;
-  }
-}
-
 export async function runTui(home: string): Promise<void> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error("cpm tui requires an interactive terminal; use cpm agent or --json in automation");
   if (process.versions.bun) {
     await runTuiDirect(home);
     return;
   }
+  const openTui = resolveOpenTuiStatus();
+  if (!openTui.available) throw new Error(openTui.hint ?? "OpenTUI is not installed.");
+  const bun = resolveBunBinary();
+  if (!bun.available || !bun.path) {
+    throw new Error(bun.hint ?? "Bun/OpenTUI runtime is unavailable. Reinstall CPM with optional dependencies enabled or set CPM_BUN_BIN.");
+  }
   const runner = fileURLToPath(new URL("./tui-runner.js", import.meta.url));
-  const bun = process.env.CPM_BUN_BIN || bundledBunBinary() || "bun";
   try {
-    const code = await runInherited(bun, [runner, "--home", home], {});
+    const code = await runInherited(bun.path, [runner, "--home", home], {});
     if (![0, 1, 130].includes(code)) throw new Error(`OpenTUI runner exited with code ${code}`);
   } catch (error) {
-    const message = (error as NodeJS.ErrnoException).code === "ENOENT"
-      ? "Bun/OpenTUI runtime is unavailable. Reinstall CPM with optional dependencies enabled or set CPM_BUN_BIN."
-      : (error as Error).message;
-    throw new Error(message);
+    throw new Error(formatUserFacingError(error));
   }
 }
 
 export async function runTuiDirect(home: string): Promise<void> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error("cpm tui requires an interactive terminal; use cpm agent or --json in automation");
+  const openTui = resolveOpenTuiStatus();
+  if (!openTui.available) throw new Error(openTui.hint ?? "OpenTUI is not installed.");
   let core: typeof import("@opentui/core");
-  try { core = await import("@opentui/core"); } catch {
-    throw new Error("OpenTUI is not installed. Reinstall CPM with optional dependencies enabled.");
+  try { core = await import("@opentui/core"); } catch (error) {
+    throw new Error(formatUserFacingError(error));
   }
   const renderer = await core.createCliRenderer({ exitOnCtrlC: true, backgroundColor: "#071018" });
   const tabs = ["Overview", "Providers", "Accounts", "Tools", "Resources"];
