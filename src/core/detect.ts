@@ -29,6 +29,11 @@ function expandHome(value: string): string {
   return expanded;
 }
 
+/** Expand `~` and Windows `%VAR%` tokens used in adapter detect paths. */
+export function expandDetectPath(value: string): string {
+  return expandHome(value);
+}
+
 function detectedCommand(adapter: ToolAdapter): string | undefined {
   const commands = adapter.detect?.commands?.length
     ? adapter.detect.commands

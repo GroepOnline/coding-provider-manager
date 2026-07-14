@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { applyEdits, modify, parse, type FormattingOptions } from "jsonc-parser";
 import YAML from "yaml";
+import { lockdownSecretFile } from "./secure-mode.js";
 
 const formatting: FormattingOptions = { insertSpaces: true, tabSize: 2, eol: "\n" };
 
@@ -49,5 +50,6 @@ export async function atomicWrite(file: string, content: string): Promise<void> 
   const tmp = `${file}.cpm-${process.pid}-${Date.now()}.tmp`;
   await fs.writeFile(tmp, content, { encoding: "utf8", mode: 0o600 });
   await fs.rename(tmp, file);
-  if (process.platform !== "win32") await fs.chmod(file, 0o600);
+  // Owner-only mode: POSIX chmod 0600; Windows ACL via icacls (best-effort — see secure-mode.ts).
+  await lockdownSecretFile(file, "best-effort");
 }

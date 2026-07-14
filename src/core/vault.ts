@@ -4,6 +4,7 @@ import path from "node:path";
 import type { KeySlotSummary } from "../types.js";
 import { atomicWrite, pathExists, readText } from "./fs.js";
 import { cpmRoot } from "./paths.js";
+import { lockdownSecretFile } from "./secure-mode.js";
 
 interface VaultSlot {
   value: string;
@@ -61,7 +62,13 @@ async function getMasterKey(home: string): Promise<Buffer> {
   const key = crypto.randomBytes(32);
   await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   await fs.writeFile(file, `${key.toString("base64")}\n`, { mode: 0o600 });
-  if (process.platform !== "win32") await fs.chmod(file, 0o600);
+  try {
+    // Fail closed: refuse to keep a newly minted master.key if Windows ACL lockdown fails.
+    await lockdownSecretFile(file, "fail-closed");
+  } catch (error) {
+    await fs.rm(file, { force: true }).catch(() => undefined);
+    throw error;
+  }
   return key;
 }
 

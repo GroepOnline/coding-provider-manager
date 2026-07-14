@@ -674,7 +674,7 @@ envCommand.command("write")
     const shell = options.shell as ShellKind;
     if (!["dotenv", "bash", "zsh", "fish", "powershell"].includes(shell)) throw new Error(`Unknown shell: ${shell}`);
     const file = await materializeActiveEnvironment(home, shell);
-    console.log(pc.green(`Wrote ${file} with mode 0600. This file contains plaintext active keys.`));
+    console.log(pc.green(`Wrote ${file} with owner-only permissions (0600 / Windows ACL). This file contains plaintext active keys.`));
   });
 envCommand.command("path").option("--shell <shell>", "dotenv, bash, zsh, fish, powershell", "dotenv").action((options) => console.log(envFilePath(home, options.shell as ShellKind)));
 

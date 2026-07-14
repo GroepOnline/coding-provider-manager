@@ -116,7 +116,11 @@ export const geminiCliAdapter = guided("gemini-cli", "Gemini CLI", {
 export const kimiCliAdapter = guided("kimi-cli", "Kimi CLI", { command: "kimi", surfaces: ["cli"] });
 export const ampAdapter = guided("amp", "Amp", { command: "amp", surfaces: ["cli", "ide"], providerInjection: "none" });
 export const gooseAdapter = guided("goose", "Goose", { command: "goose", surfaces: ["cli", "desktop"] });
-export const zedAdapter = guided("zed", "Zed", { command: "zed", paths: ["/Applications/Zed.app"], surfaces: ["desktop", "ide"] });
+export const zedAdapter = guided("zed", "Zed", {
+  command: "zed",
+  paths: ["/Applications/Zed.app", "%LOCALAPPDATA%/Programs/Zed/Zed.exe", "%LOCALAPPDATA%/Programs/Zed/zed.exe"],
+  surfaces: ["desktop", "ide"],
+});
 export const augmentAdapter = guided("augment", "Augment Code", { commands: ["code", "cursor", "idea"], surfaces: ["extension", "ide"], providerInjection: "none" });
 export const junieAdapter = guided("junie", "JetBrains Junie", { commands: ["idea"], surfaces: ["ide"], providerInjection: "none" });
 export const traeAdapter = guided("trae", "TRAE", { command: "trae", surfaces: ["desktop", "ide"] });
@@ -132,20 +136,42 @@ export const copilotCliAdapter = guided("copilot-cli", "GitHub Copilot CLI", {
   reason: "GitHub Copilot CLI uses GitHub account entitlements. CPM manages account selection through the GitHub CLI account driver.",
 });
 export const amazonQAdapter = guided("amazon-q", "Amazon Q Developer CLI", { command: "q", surfaces: ["cli", "ide"], providerInjection: "none" });
-export const kiroAdapter = guided("kiro", "Kiro", { command: "kiro", paths: ["/Applications/Kiro.app"], surfaces: ["desktop", "ide"], providerInjection: "none" });
-export const warpAdapter = guided("warp", "Warp", { command: "warp", paths: ["/Applications/Warp.app"], surfaces: ["desktop", "cli"], providerInjection: "none" });
+export const kiroAdapter = guided("kiro", "Kiro", {
+  command: "kiro",
+  paths: ["/Applications/Kiro.app", "%LOCALAPPDATA%/Programs/Kiro/Kiro.exe"],
+  surfaces: ["desktop", "ide"],
+  providerInjection: "none",
+});
+export const warpAdapter = guided("warp", "Warp", {
+  command: "warp",
+  paths: ["/Applications/Warp.app", "%LOCALAPPDATA%/Programs/Warp/Warp.exe", "%ProgramFiles%/Warp/Warp.exe"],
+  surfaces: ["desktop", "cli"],
+  providerInjection: "none",
+});
 export const openHandsAdapter = guided("openhands", "OpenHands", { command: "openhands", commands: ["openhands", "openhands-cli"], surfaces: ["cli", "web"] });
 export const plandexAdapter = guided("plandex", "Plandex", { command: "plandex", surfaces: ["cli"] });
 export const mentatAdapter = guided("mentat", "Mentat", { command: "mentat", surfaces: ["cli"] });
 export const openInterpreterAdapter = guided("open-interpreter", "Open Interpreter", { command: "interpreter", surfaces: ["cli"] });
 export const mistralVibeAdapter = guided("mistral-vibe", "Mistral Vibe", { command: "vibe", surfaces: ["cli"] });
 export const tabbyAdapter = guided("tabby", "Tabby", { command: "tabby", surfaces: ["cli", "extension", "ide"] });
-export const voidEditorAdapter = guided("void-editor", "Void Editor", { command: "void", paths: ["/Applications/Void.app"], surfaces: ["desktop", "ide"] });
-export const pearAiAdapter = guided("pearai", "PearAI", { command: "pearai", paths: ["/Applications/PearAI.app"], surfaces: ["desktop", "ide"] });
+export const voidEditorAdapter = guided("void-editor", "Void Editor", {
+  command: "void",
+  paths: ["/Applications/Void.app", "%LOCALAPPDATA%/Programs/Void/Void.exe", "%LOCALAPPDATA%/Programs/void/Void.exe"],
+  surfaces: ["desktop", "ide"],
+});
+export const pearAiAdapter = guided("pearai", "PearAI", {
+  command: "pearai",
+  paths: ["/Applications/PearAI.app", "%LOCALAPPDATA%/Programs/PearAI/PearAI.exe"],
+  surfaces: ["desktop", "ide"],
+});
 export const devinAdapter = guided("devin", "Devin", { command: "devin", surfaces: ["cli", "web"], providerInjection: "none" });
 export const sweepAdapter = guided("sweep", "Sweep", { command: "sweep", surfaces: ["cli", "web"], providerInjection: "none" });
 export const qodoAdapter = guided("qodo", "Qodo", { commands: ["qodo", "pr-agent"], surfaces: ["cli", "extension", "ide"] });
 export const continueCliAdapter = guided("continue-cli", "Continue CLI", { command: "cn", commands: ["cn", "continue"], surfaces: ["cli"] });
-export const aiderDeskAdapter = guided("aider-desk", "AiderDesk", { command: "aider-desk", paths: ["/Applications/AiderDesk.app"], surfaces: ["desktop"] });
+export const aiderDeskAdapter = guided("aider-desk", "AiderDesk", {
+  command: "aider-desk",
+  paths: ["/Applications/AiderDesk.app", "%LOCALAPPDATA%/Programs/AiderDesk/AiderDesk.exe"],
+  surfaces: ["desktop"],
+});
 export const boltAdapter = guided("bolt", "Bolt", { surfaces: ["web"], providerInjection: "none" });
 export const lovableAdapter = guided("lovable", "Lovable", { surfaces: ["web"], providerInjection: "none" });

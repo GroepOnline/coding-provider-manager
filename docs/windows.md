@@ -117,6 +117,8 @@ Lines look like `$env:OPENROUTER_API_KEY = '…'`. Prefer `cpm run <tool>` when 
 
 ## Secrets and file modes
 
+Unix installs `chmod` secret/env files to `0600`. On Windows, CPM runs `icacls` after secret writes (strip inheritance, grant current user only) — see [paths.md](paths.md). Master key creation fails closed if ACL lockdown fails; other atomic writes are best-effort so sandboxed hosts without `icacls` still function.
+
 Prefer `CPM_MASTER_KEY` (base64-encoded 32-byte key) for deterministic headless/CI installs rather than committing a machine-local `master.key`.
 
 ## PowerShell tips
@@ -134,6 +136,7 @@ Multi-line MCP configs: use a here-string or a temp JSON file.
 ## Related docs
 
 - [README](../README.md) — install, quick start, troubleshooting
+- [paths.md](paths.md) — state directory, ACL behavior, detect path tokens
 - [adapter-capabilities.md](adapter-capabilities.md) — automatic vs guided vs none
 - [cli-reference.md](cli-reference.md) — command map (`cpm --help` is authoritative)
 - [compatibility.md](compatibility.md) — provider / MCP matrix
