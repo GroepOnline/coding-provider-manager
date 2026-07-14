@@ -119,10 +119,61 @@ async function zaiUsage(provider: ProviderProfile, key: string, alias?: string):
   };
 }
 
+/** MiniMax Token/Coding Plan remains — same Bearer + GET pattern as DeepSeek/Z.AI. */
+async function minimaxUsage(provider: ProviderProfile, key: string, alias?: string): Promise<UsageResult> {
+  const base = new URL(provider.openAIBaseUrl ?? "https://api.minimax.io/v1").origin;
+  const url = `${base}/v1/api/openplatform/coding_plan/remains`;
+  const response = await request(url, key);
+  if (!response.ok) throw new Error(`MiniMax quota HTTP ${response.status}`);
+  const root = record(response.data);
+  const baseResp = record(root?.base_resp);
+  const statusCode = numberAt(baseResp, ["status_code"]);
+  if (statusCode !== undefined && statusCode !== 0) {
+    const msg = typeof baseResp?.status_msg === "string" ? baseResp.status_msg : `status ${statusCode}`;
+    throw new Error(`MiniMax quota error: ${msg}`);
+  }
+  const remains = resultsAt(response.data, "model_remains");
+  const first = remains[0];
+  const interval = numberAt(first, ["current_interval_remaining_percent"]);
+  const weekly = numberAt(first, ["current_weekly_remaining_percent"]);
+  const remaining = [interval, weekly].filter((item): item is number => item !== undefined);
+  const worstRemaining = remaining.length ? Math.min(...remaining) : undefined;
+  const endMs = numberAt(first, ["end_time"]) ?? numberAt(first, ["weekly_end_time"]);
+  const resetAt = endMs !== undefined
+    ? new Date(endMs > 1e12 ? endMs : endMs * 1000).toISOString()
+    : undefined;
+  return {
+    target: provider.id,
+    alias,
+    source: "provider",
+    available: true,
+    fetchedAt: new Date().toISOString(),
+    summary: worstRemaining !== undefined
+      ? `MiniMax quota lowest remaining window ${worstRemaining}%`
+      : "MiniMax Coding Plan quota available",
+    ...(worstRemaining !== undefined ? { score: worstRemaining } : {}),
+    ...(resetAt ? { resetAt } : {}),
+    data: response.data,
+  };
+}
+
 /** Providers with a verified public usage/balance/quota API. Do not invent adapters for the rest. */
-export const NATIVE_USAGE_PROVIDER_IDS = ["openrouter", "deepseek", "zai-coding"] as const satisfies readonly ProviderId[];
+export const NATIVE_USAGE_PROVIDER_IDS = ["openrouter", "deepseek", "zai-coding", "minimax"] as const satisfies readonly ProviderId[];
 
 export type NativeUsageProviderId = (typeof NATIVE_USAGE_PROVIDER_IDS)[number];
+
+export interface NativeUsageSupportMatrix {
+  supported: readonly NativeUsageProviderId[];
+  endpoints: Record<NativeUsageProviderId, string>;
+  nextSteps: string[];
+}
+
+const NATIVE_USAGE_ENDPOINTS = {
+  openrouter: "GET https://openrouter.ai/api/v1/key",
+  deepseek: "GET https://api.deepseek.com/user/balance",
+  "zai-coding": "GET https://api.z.ai/api/monitor/usage/quota/limit",
+  minimax: "GET https://api.minimax.io/v1/api/openplatform/coding_plan/remains",
+} as const satisfies Record<NativeUsageProviderId, string>;
 
 export function providerSupportsNativeUsage(id: ProviderId): id is NativeUsageProviderId {
   return (NATIVE_USAGE_PROVIDER_IDS as readonly string[]).includes(id);
@@ -130,6 +181,21 @@ export function providerSupportsNativeUsage(id: ProviderId): id is NativeUsagePr
 
 export function nativeUsageAllowlistLabel(): string {
   return NATIVE_USAGE_PROVIDER_IDS.join(", ");
+}
+
+/** Structured support matrix for doctor / usage / status JSON consumers. */
+export function nativeUsageSupportMatrix(): NativeUsageSupportMatrix {
+  return {
+    supported: NATIVE_USAGE_PROVIDER_IDS,
+    endpoints: { ...NATIVE_USAGE_ENDPOINTS },
+    nextSteps: [
+      `Fetch quota: cpm usage <${NATIVE_USAGE_PROVIDER_IDS.join("|")}> --json`,
+      `Pick highest remaining key: cpm key best <provider> (native usage only)`,
+      "Providers without a verified public usage API: use cpm key next <provider> or cpm key use <provider> <alias>",
+      "OpenAI org usage/costs require an Admin API key — not supported with a normal OPENAI_API_KEY",
+      "Account pools (Codex / OpenCode / GitHub): cpm accounts usage",
+    ],
+  };
 }
 
 export function unsupportedNativeUsageMessage(provider: ProviderProfile): string {
@@ -166,6 +232,8 @@ export async function fetchProviderUsage(
         return await deepSeekUsage(secret.value, secret.alias);
       case "zai-coding":
         return await zaiUsage(provider, secret.value, secret.alias);
+      case "minimax":
+        return await minimaxUsage(provider, secret.value, secret.alias);
       default: {
         const _exhaustive: never = provider.id;
         throw new Error(`Unhandled native usage provider: ${_exhaustive}`);

@@ -14,6 +14,7 @@ import { getProvider } from "../providers/catalog.js";
 import { fetchProviderModels, probeProvider, resolveProviderModels } from "../providers/models.js";
 import { planMcpResources } from "../resources/apply.js";
 import { loadRegistry } from "../resources/registry.js";
+import { nativeUsageSupportMatrix, providerSupportsNativeUsage } from "../usage/index.js";
 import type {
   AdapterContext,
   PlannedChange,
@@ -120,7 +121,7 @@ export async function applyPlannedChanges(
     return backupId;
   } catch (error) {
     await rollbackBackup(backupId, home);
-    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`, { cause: error });
+    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`);
   }
 }
 
@@ -233,11 +234,12 @@ export async function doctorRun(home: string, params: Record<string, unknown>): 
       model: selected.id,
       models: entry.models.length,
       modelListingFallback,
+      nativeUsageSupported: providerSupportsNativeUsage(provider.id),
       probes,
       ok: true,
     });
   }
-  return { results };
+  return { results, nativeUsage: nativeUsageSupportMatrix() };
 }
 
 export async function keysAdd(home: string, params: Record<string, unknown>): Promise<unknown> {

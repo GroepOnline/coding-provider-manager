@@ -136,12 +136,18 @@ describe("agent protocol expand", () => {
     expect(JSON.stringify(response)).not.toContain(secret);
     expect(vi.mocked(fetchProviderModels)).toHaveBeenCalled();
     expect(vi.mocked(probeProvider).mock.calls.length).toBeGreaterThanOrEqual(2);
-    const result = response.result as { results: Array<{ provider: string; probes: string[]; ok: boolean }> };
+    const result = response.result as {
+      results: Array<{ provider: string; probes: string[]; ok: boolean; nativeUsageSupported?: boolean }>;
+      nativeUsage?: { supported: string[]; nextSteps: string[] };
+    };
     expect(result.results[0]).toMatchObject({
       provider: "zai-coding",
       ok: true,
+      nativeUsageSupported: true,
     });
     expect(result.results[0]!.probes).toEqual(expect.arrayContaining(["auth", "streaming"]));
+    expect(result.nativeUsage?.supported).toEqual(expect.arrayContaining(["openrouter", "deepseek", "zai-coding", "minimax"]));
+    expect(result.nativeUsage?.nextSteps?.length).toBeGreaterThanOrEqual(3);
   });
 
   it("reports local sync status without SSH or secrets", async () => {

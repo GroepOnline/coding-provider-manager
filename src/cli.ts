@@ -22,6 +22,7 @@ import { accountDriverSummaries, accountDriverStatus, accountDriverUsage, listDr
 import {
   fetchUsageTarget,
   nativeUsageAllowlistLabel,
+  nativeUsageSupportMatrix,
   providerSupportsNativeUsage,
   saveUsageCache,
   selectBestProviderKey,
@@ -159,7 +160,7 @@ async function applyPlans(plans: Array<{ status: string; path?: string; after?: 
     return backupId;
   } catch (error) {
     await rollbackBackup(backupId, backupHome);
-    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`, { cause: error });
+    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`);
   }
 }
 
@@ -290,14 +291,17 @@ program.command("usage")
     const results = [];
     for (const id of targets) results.push(...await fetchUsageTarget(home, id, { allKeys: Boolean(options.allKeys), alias: options.key }));
     await saveUsageCache(home, results);
-    if (options.json) console.log(JSON.stringify(results, null, 2));
-    else {
+    const support = nativeUsageSupportMatrix();
+    if (options.json) {
+      console.log(JSON.stringify({ results, nativeUsage: support }, null, 2));
+    } else {
       for (const result of results) {
         const mark = result.available ? pc.green("✓") : result.error === "native-usage-unsupported" ? pc.yellow("!") : pc.dim("·");
         console.log(`${mark} ${result.target}${result.alias ? `:${result.alias}` : ""}  ${result.summary}${result.resetAt ? `  reset=${result.resetAt}` : ""}`);
       }
       if (target === "all" && results.some((item) => item.error === "native-usage-unsupported")) {
         console.log(pc.dim(`Native usage allowlist: ${nativeUsageAllowlistLabel()}. Other providers have no verified public usage API.`));
+        console.log(pc.dim(`Next: ${support.nextSteps[1]} · ${support.nextSteps[2]}`));
       }
     }
   });
@@ -738,25 +742,36 @@ program.command("doctor")
   .option("--all-keys", "test every enabled key slot")
   .option("--probe", "run chat, streaming and tool-call probes")
   .option("--paths-only", "only print resolved Windows/Unix CPM paths and dependency status")
+  .option("--json", "print machine-readable doctor + native usage support matrix")
   .action(async (providerId, options) => {
     const paths = resolveRuntimePaths(home);
     const deps = inspectDependencies();
-    console.log(pc.bold("CPM paths"));
-    console.log(`  platform=${paths.platform}/${paths.arch}  node=${paths.node}`);
-    console.log(`  home=${displayPath(paths.home)}`);
-    console.log(`  configRoot=${displayPath(paths.configRoot)}`);
-    console.log(`  cpmRoot=${displayPath(paths.cpmRoot)}`);
-    if (paths.appData) console.log(`  APPDATA=${displayPath(paths.appData)}`);
-    if (paths.localAppData) console.log(`  LOCALAPPDATA=${displayPath(paths.localAppData)}`);
-    console.log(pc.bold("Dependencies"));
-    console.log(`  bun=${deps.bun.available ? pc.green("ok") : pc.yellow("missing")}${deps.bun.path ? ` (${deps.bun.path})` : ""}${deps.bun.hint && !deps.bun.available ? ` — ${deps.bun.hint}` : ""}`);
-    console.log(`  openTui=${deps.openTui.available ? pc.green("ok") : pc.yellow("missing")}${deps.openTui.hint && !deps.openTui.available ? ` — ${deps.openTui.hint}` : ""}`);
-    if (options.pathsOnly) return;
+    const support = nativeUsageSupportMatrix();
+    if (!options.json) {
+      console.log(pc.bold("CPM paths"));
+      console.log(`  platform=${paths.platform}/${paths.arch}  node=${paths.node}`);
+      console.log(`  home=${displayPath(paths.home)}`);
+      console.log(`  configRoot=${displayPath(paths.configRoot)}`);
+      console.log(`  cpmRoot=${displayPath(paths.cpmRoot)}`);
+      if (paths.appData) console.log(`  APPDATA=${displayPath(paths.appData)}`);
+      if (paths.localAppData) console.log(`  LOCALAPPDATA=${displayPath(paths.localAppData)}`);
+      console.log(pc.bold("Dependencies"));
+      console.log(`  bun=${deps.bun.available ? pc.green("ok") : pc.yellow("missing")}${deps.bun.path ? ` (${deps.bun.path})` : ""}${deps.bun.hint && !deps.bun.available ? ` — ${deps.bun.hint}` : ""}`);
+      console.log(`  openTui=${deps.openTui.available ? pc.green("ok") : pc.yellow("missing")}${deps.openTui.hint && !deps.openTui.available ? ` — ${deps.openTui.hint}` : ""}`);
+      console.log(pc.bold("Native usage"));
+      console.log(`  supported=${support.supported.join(", ")}`);
+      console.log(`  next=${support.nextSteps[2]}`);
+    }
+    if (options.pathsOnly) {
+      if (options.json) console.log(JSON.stringify({ paths, dependencies: deps, nativeUsage: support }, null, 2));
+      return;
+    }
 
     const provider = getProvider(providerId || await activeProviderId());
     const summaries = options.allKeys
       ? (await listSecrets(home, providerScope(provider.id))).filter((item) => !item.disabled && item.source === "vault")
       : [{ alias: options.key }];
+    const results = [];
     for (const summary of summaries) {
       const alias = summary.alias;
       const key = await providerKey(provider, alias, false);
@@ -764,21 +779,48 @@ program.command("doctor")
       const selectedId = options.model ?? (await loadState(home)).providers[provider.id]?.defaultModel ?? provider.defaultModel ?? entry.models[0]?.id;
       const selected = entry.models.find((item) => item.id === selectedId) ?? entry.models[0];
       if (!selected) throw new Error(`No models for ${provider.id}`);
-      if (entry.source.some((source) => source.startsWith("fetch-fallback:"))) {
-        console.log(pc.yellow(`! ${provider.id} model endpoint was unavailable; validating the selected model directly.`));
-      } else {
-        console.log(pc.green(`✓ ${provider.id}:${alias ?? "active"} model listing passed; ${entry.models.length} model(s).`));
-      }
-      await probeProvider(provider, key, selected);
-      console.log(pc.green(`✓ ${provider.id}:${alias ?? "active"} authentication and ${selected.id} basic ${modelProtocol(provider, selected)} probe passed.`));
-      if (options.probe) {
-        await probeProvider(provider, key, selected, { streaming: true });
-        console.log(pc.green("✓ streaming probe passed."));
-        if (selected.toolCall !== false) {
-          await probeProvider(provider, key, selected, { toolCall: true });
-          console.log(pc.green("✓ native tool-call probe passed."));
+      if (!options.json) {
+        if (entry.source.some((source) => source.startsWith("fetch-fallback:"))) {
+          console.log(pc.yellow(`! ${provider.id} model endpoint was unavailable; validating the selected model directly.`));
+        } else {
+          console.log(pc.green(`✓ ${provider.id}:${alias ?? "active"} model listing passed; ${entry.models.length} model(s).`));
         }
       }
+      await probeProvider(provider, key, selected);
+      const probes = ["auth"];
+      if (!options.json) {
+        console.log(pc.green(`✓ ${provider.id}:${alias ?? "active"} authentication and ${selected.id} basic ${modelProtocol(provider, selected)} probe passed.`));
+      }
+      if (options.probe) {
+        await probeProvider(provider, key, selected, { streaming: true });
+        probes.push("streaming");
+        if (!options.json) console.log(pc.green("✓ streaming probe passed."));
+        if (selected.toolCall !== false) {
+          await probeProvider(provider, key, selected, { toolCall: true });
+          probes.push("toolCall");
+          if (!options.json) console.log(pc.green("✓ native tool-call probe passed."));
+        }
+      }
+      results.push({
+        provider: provider.id,
+        alias: alias ?? "active",
+        model: selected.id,
+        models: entry.models.length,
+        modelListingFallback: entry.source.some((source) => source.startsWith("fetch-fallback:")),
+        nativeUsageSupported: providerSupportsNativeUsage(provider.id),
+        probes,
+        ok: true,
+      });
+    }
+    if (options.json) {
+      console.log(JSON.stringify({
+        paths,
+        dependencies: deps,
+        nativeUsage: support,
+        results,
+      }, null, 2));
+    } else if (!providerSupportsNativeUsage(provider.id)) {
+      console.log(pc.yellow(`! ${provider.id} has no native usage adapter. Supported: ${nativeUsageAllowlistLabel()}.`));
     }
   });
 
@@ -959,7 +1001,8 @@ program.command("status")
       version: "0.4.0",
       paths,
       dependencies: deps,
-      nativeUsageProviders: nativeUsageAllowlistLabel().split(", "),
+      nativeUsageProviders: [...nativeUsageSupportMatrix().supported],
+      nativeUsage: nativeUsageSupportMatrix(),
       state: {
         selectedProviders: state.selectedProviders ?? [],
         updatedAt: state.updatedAt,
