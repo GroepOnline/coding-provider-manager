@@ -1,7 +1,18 @@
 import os from "node:os";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// Avoid real `where.exe` / `which` during auth.status — Windows CI can spend
+// several seconds per flow and trip the default 5s test timeout.
+vi.mock("../src/core/detect.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/core/detect.js")>();
+  return {
+    ...actual,
+    commandExists: () => false,
+  };
+});
+
 import { agentManifest, dispatchAgentRequest } from "../src/agent/index.js";
 import { addSecret, fingerprintSecret, providerScope } from "../src/core/vault.js";
 import { upsertResource } from "../src/resources/registry.js";
@@ -15,7 +26,7 @@ async function tempHome(): Promise<string> {
   return home;
 }
 
-describe("agent auth/resource/detect methods", () => {
+describe("agent auth/resource/detect methods", { timeout: 15_000 }, () => {
   it("lists auth.status, resource.list and detect.run on the manifest", () => {
     const methods = agentManifest().methods as readonly string[];
     expect(methods).toEqual(expect.arrayContaining([
