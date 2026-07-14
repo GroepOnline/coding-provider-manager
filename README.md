@@ -18,15 +18,23 @@ Version **0.4** adds a full OpenTUI dashboard, a stable JSONL agent protocol, pr
 - Optional account managers for OAuth pools: `codex-multi-auth`, `oc-codex-multi-auth`, and/or GitHub CLI (`gh`)
 - SSH client available on `PATH` for `cpm sync …`
 
-Local state lives under `~/.cpm/` (usage cache, vault, plans). Secrets are never written to the usage cache.
+Local state lives under the platform config root (usage cache, vault, plans):
+
+| OS | Path |
+|---|---|
+| Windows | `%APPDATA%\coding-provider-manager` |
+| Linux / macOS | `~/.config/coding-provider-manager` (or `$XDG_CONFIG_HOME/…`) |
+
+Secrets are never written to the usage cache. Windows path details: [docs/windows.md](docs/windows.md).
 
 ## Installation
 
 ### From source (Windows PowerShell)
 
-From the repository root:
+Requires **Node.js 20+** on `PATH`. From the repository root (native PowerShell — WSL not required):
 
 ```powershell
+node --version
 npm install
 npm run check
 npm link
@@ -51,6 +59,8 @@ npm run dev -- --version
 npm run dev -- agent manifest
 ```
 
+If `npm link` fails with an EPERM / path-length error, prefer `node .\dist\cli.js …` or install from a packed tarball (below). See [docs/windows.md](docs/windows.md) for OpenTUI, SSH, and `%APPDATA%` notes.
+
 ### From a packed tarball
 
 ```powershell
@@ -71,6 +81,13 @@ npm uninstall -g @onlinechefgroep/coding-provider-manager
 
 ## Quick start
 
+Five-minute path after install:
+
+1. Confirm the binary: `cpm --version`
+2. Add a key (example OpenRouter): `$env:OPENROUTER_API_KEY | cpm key add openrouter primary`
+3. Check health: `cpm doctor openrouter` (add `--probe` for live capability checks)
+4. Open the dashboard (TTY) or query the agent API (non-TTY)
+
 Human terminal (TTY):
 
 ```powershell
@@ -90,7 +107,7 @@ r            refresh usage
 q            quit
 ```
 
-Automation and agents (never prompts; never returns secret values):
+Automation and agents (never prompts; never returns secret values). Quote JSON with single quotes in PowerShell so braces are not expanded:
 
 ```powershell
 cpm agent manifest
@@ -274,10 +291,27 @@ CPM reuses verified model and thinking metadata from `@onlinechefgroep/pi-zai`. 
 - Subprocesses launch without shell interpolation
 - Account-manager integrations use their public CLIs rather than token-file mutation
 
+## Troubleshooting
+
+| Symptom | What to try |
+|---|---|
+| `cpm` / `cpm tui` fails with OpenTUI / Bun unavailable | Reinstall with optional deps enabled (`npm install` without `--omit=optional`). Or set `CPM_BUN_BIN`. Use `cpm tui --snapshot` when you only need the model dump. |
+| Bare `cpm` prints JSON instead of a UI | Non-TTY host (pipe, task, CI). Run in Windows Terminal / an interactive PowerShell, or call `cpm tui` explicitly. |
+| `ssh` / `cpm sync` not found | Install Windows OpenSSH Client; confirm `Get-Command ssh`. See [docs/windows.md](docs/windows.md). |
+| `usage` returns `available: false` | Expected when no verified adapter exists for that provider. CPM does not invent balances. |
+| Doctor auth failures | Confirm the active key with `cpm key list <provider>` / `cpm key use …`, then `cpm doctor <provider> --probe`. |
+| PowerShell mangles `--params '{…}'` | Use **single-quoted** JSON strings so `{` / `}` are not expanded. |
+| Cannot find vault / state after install | On Windows look under `%APPDATA%\coding-provider-manager`, not `~/.cpm`. |
+| Global link / install EPERM | Use `node .\dist\cli.js` or a tarball install; close processes locking `node_modules`. |
+
+Still stuck: `cpm status`, `cpm doctor`, and `cpm agent manifest` are the safest read-only diagnostics (no secret values in agent output).
+
 ## Further documentation
 
 | Doc | Topic |
 |---|---|
+| [CHANGELOG.md](CHANGELOG.md) | Release history (Keep a Changelog) |
+| [docs/windows.md](docs/windows.md) | Windows paths, OpenTUI, SSH, PowerShell tips |
 | [docs/architecture.md](docs/architecture.md) | Control-plane layers, auth boundary, protocol routing, SSH |
 | [docs/compatibility.md](docs/compatibility.md) | Provider injection matrix, OAuth flows, MCP writers |
 | [docs/agent-protocol.md](docs/agent-protocol.md) | JSONL agent protocol |
