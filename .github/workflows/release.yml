@@ -1,0 +1,172 @@
+# Tag-triggered release pipeline for @onlinechefgroep/coding-provider-manager.
+#
+# Trigger: push a version tag matching v* (e.g. v0.4.1).
+#
+# Secrets / tokens:
+#   GITHUB_TOKEN — provided automatically; used to create the GitHub Release.
+#   NPM_TOKEN    — OPTIONAL repository secret (Settings → Secrets and variables
+#                  → Actions). npm automation token with publish rights for the
+#                  @onlinechefgroep scope. When absent, the npm-publish job
+#                  completes successfully without publishing (soft skip).
+#
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-and-pack:
+    name: check and pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck, test, and build
+        run: npm run check
+
+      - name: Pack
+        id: pack
+        run: |
+          tarball="$(npm pack | tail -n 1)"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+          echo "Packed $tarball"
+
+      - name: Upload pack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-pack
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 14
+
+  github-release:
+    name: GitHub Release
+    needs: check-and-pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download pack artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-pack
+
+      - name: Extract changelog excerpt
+        id: changelog
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          excerpt_file="$RUNNER_TEMP/release-notes.md"
+
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v ver="$version" '
+              BEGIN { capture = 0 }
+              $0 ~ ("^## \\[" ver "\\]") { capture = 1; next }
+              /^## \[/ && capture { exit }
+              capture { print }
+            ' CHANGELOG.md > "$excerpt_file"
+
+            if [[ ! -s "$excerpt_file" ]]; then
+              awk '
+                BEGIN { capture = 0 }
+                /^## \[Unreleased\]/ { capture = 1; next }
+                /^## \[/ && capture { exit }
+                capture { print }
+              ' CHANGELOG.md > "$excerpt_file"
+            fi
+          fi
+
+          if [[ ! -s "$excerpt_file" ]]; then
+            printf '%s\n' "Release ${tag}" > "$excerpt_file"
+          fi
+
+          {
+            echo "body<<EOF"
+            cat "$excerpt_file"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: "*.tgz"
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Soft publish: always scheduled after a successful pack. If NPM_TOKEN is
+  # missing, the job exits 0 without calling npm publish.
+  npm-publish:
+    name: npm publish (optional)
+    needs: check-and-pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+          scope: "@onlinechefgroep"
+
+      - name: Detect NPM_TOKEN
+        id: token
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [[ -z "${NPM_TOKEN}" ]]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "NPM_TOKEN not set — npm publish will be skipped (soft)."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.token.outputs.present == 'true'
+        run: npm ci
+
+      - name: Publish to npm
+        if: steps.token.outputs.present == 'true'
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Skip notice
+        if: steps.token.outputs.present != 'true'
+        run: echo "Publish skipped — add repository secret NPM_TOKEN to enable npm publish."

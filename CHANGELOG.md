@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Tag-triggered GitHub Actions release workflow (`v*`) with check, `npm pack`, GitHub Release notes from CHANGELOG, and optional soft npm publish when `NPM_TOKEN` is present.
+
 ## [0.4.0] - 2026-07-14
 
 First public 0.4 line of Coding Provider Manager (`cpm`): a local control plane for provider keys, OAuth account pools, usage, coding surfaces, MCP resources, and SSH sync.
