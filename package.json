@@ -1,6 +1,6 @@
 {
   "name": "@onlinechefgroep/coding-provider-manager",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Interactive and agent-native control plane for multi-provider keys, OAuth accounts, usage, coding tools, MCP and SSH sync.",
   "type": "module",
   "bin": {

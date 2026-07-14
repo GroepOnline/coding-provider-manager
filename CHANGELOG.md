@@ -7,9 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-07-14
+
 ### Added
 
 - Tag-triggered GitHub Actions release workflow (`v*`) with check, `npm pack`, GitHub Release notes from CHANGELOG, and optional soft npm publish when `NPM_TOKEN` is present.
+- GitHub Actions CI with Windows matrix, pack smoke, and ESLint lint gate.
+- Expanded agent protocol methods for broader CLI parity (`cpm agent`).
+- Guided Cursor/Windsurf adapter contracts and related capability docs.
+- Windows ACL hardening, secure-mode path detection, and path guides.
+- Extended usage adapters and doctor support matrix coverage.
+- Vitest coverage config and CLI smoke tests.
+
+### Fixed
+
+- Post-parallel integration regressions in agent operations and CLI wiring.
+- Windows path assertions and CPM state path documentation/ignores.
+
+### Changed
+
+- Hardened CLI DX helpers and usage fallback messaging for clearer operator feedback.
 
 ## [0.4.0] - 2026-07-14
 
@@ -34,5 +51,6 @@ First public 0.4 line of Coding Provider Manager (`cpm`): a local control plane 
 - Generated client configs prefer environment references over literal keys.
 - Account-manager integrations use public CLIs; CPM does not ingest OAuth refresh tokens into the vault.
 
-[Unreleased]: https://github.com/OnlineChefGroep/coding-provider-manager/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/OnlineChefGroep/coding-provider-manager/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/OnlineChefGroep/coding-provider-manager/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/OnlineChefGroep/coding-provider-manager/releases/tag/v0.4.0
