@@ -115,7 +115,7 @@ export async function runTui(home: string): Promise<void> {
     const code = await runInherited(bun.path, [runner, "--home", home], {});
     if (![0, 1, 130].includes(code)) throw new Error(`OpenTUI runner exited with code ${code}`);
   } catch (error) {
-    throw new Error(formatUserFacingError(error));
+    throw new Error(formatUserFacingError(error), { cause: error });
   }
 }
 
@@ -125,7 +125,7 @@ export async function runTuiDirect(home: string): Promise<void> {
   if (!openTui.available) throw new Error(openTui.hint ?? "OpenTUI is not installed.");
   let core: typeof import("@opentui/core");
   try { core = await import("@opentui/core"); } catch (error) {
-    throw new Error(formatUserFacingError(error));
+    throw new Error(formatUserFacingError(error), { cause: error });
   }
   const renderer = await core.createCliRenderer({ exitOnCtrlC: true, backgroundColor: "#071018" });
   const tabs = ["Overview", "Providers", "Accounts", "Tools", "Resources"];

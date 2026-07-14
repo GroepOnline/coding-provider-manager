@@ -106,7 +106,9 @@ async function firstSuccessful(command: string, variants: string[][], timeoutMs 
       last = result;
       if (result.code === 0) return result;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new Error(`${command} is not installed`);
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        throw new Error(`${command} is not installed`, { cause: error });
+      }
       throw error;
     }
   }

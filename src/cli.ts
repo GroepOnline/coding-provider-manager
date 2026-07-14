@@ -159,7 +159,7 @@ async function applyPlans(plans: Array<{ status: string; path?: string; after?: 
     return backupId;
   } catch (error) {
     await rollbackBackup(backupId, backupHome);
-    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`);
+    throw new Error(`Apply failed and was rolled back: ${(error as Error).message}`, { cause: error });
   }
 }
 
