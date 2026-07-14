@@ -11,12 +11,13 @@ concurrency:
 
 jobs:
   check:
-    name: check (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    name: check (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node-version: [20, 22]
 
     steps:
@@ -34,3 +35,43 @@ jobs:
 
       - name: Typecheck, test, and build
         run: npm run check
+
+      - name: Pack npm release tarball
+        id: pack-tarball
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # check already built dist; skip prepack rebuild so stdout stays the .tgz name only
+          $name = (npm pack --ignore-scripts | Select-Object -Last 1).ToString().Trim()
+          if ($name -notmatch '\.tgz$') { throw "Unexpected npm pack output: $name" }
+          $path = Join-Path $PWD $name
+          if (-not (Test-Path -LiteralPath $path)) { throw "Packed tarball missing: $path" }
+          "tarball=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Packed $name"
+
+      - name: Smoke-install packed tarball
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tarballName = '${{ steps.pack-tarball.outputs.tarball }}'
+          $tarballPath = Join-Path $env:GITHUB_WORKSPACE $tarballName
+          if (-not (Test-Path -LiteralPath $tarballPath)) { throw "Tarball not found: $tarballPath" }
+
+          $smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("cpm-pack-smoke-" + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $smokeRoot | Out-Null
+          try {
+            Set-Location $smokeRoot
+            npm init -y | Out-Null
+            # Non-interactive CLI only; skip optional OpenTUI/Bun natives for pack smoke.
+            npm install --omit=optional $tarballPath
+            $cli = Join-Path $smokeRoot 'node_modules/@onlinechefgroep/coding-provider-manager/dist/cli.js'
+            if (-not (Test-Path -LiteralPath $cli)) { throw "Installed CLI missing: $cli" }
+            Write-Host '==> cpm --version'
+            node $cli --version
+            Write-Host '==> cpm agent manifest'
+            node $cli agent manifest
+          }
+          finally {
+            Set-Location $env:GITHUB_WORKSPACE
+            Remove-Item -LiteralPath $smokeRoot -Recurse -Force -ErrorAction SilentlyContinue
+          }
