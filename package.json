@@ -1,0 +1,82 @@
+{
+  "name": "@onlinechefgroep/coding-provider-manager",
+  "version": "0.4.0",
+  "description": "Interactive and agent-native control plane for multi-provider keys, OAuth accounts, usage, coding tools, MCP and SSH sync.",
+  "type": "module",
+  "bin": {
+    "cpm": "./dist/cli.js",
+    "coding-provider-manager": "./dist/cli.js"
+  },
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js",
+      "default": "./dist/cli.js"
+    }
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/cli.ts src/tui-runner.ts --format esm --dts --clean --external @opentui/core",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "cpm": "node dist/cli.js",
+    "test": "vitest run",
+    "check": "tsc --noEmit && npm test && npm run build",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.8.0",
+    "commander": "^14.0.0",
+    "diff": "^8.0.2",
+    "jsonc-parser": "^3.3.1",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/node": "^24.0.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "license": "MIT",
+  "keywords": [
+    "coding-agent",
+    "llm",
+    "api-key",
+    "mcp",
+    "opencode",
+    "cline",
+    "openrouter",
+    "zai",
+    "minimax",
+    "ssh"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OnlineChefGroep/coding-provider-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OnlineChefGroep/coding-provider-manager/issues"
+  },
+  "homepage": "https://github.com/OnlineChefGroep/coding-provider-manager#readme",
+  "author": "OnlineChefGroep",
+  "overrides": {
+    "esbuild": "0.28.1"
+  },
+  "optionalDependencies": {
+    "@opentui/core": "^0.4.3",
+    "bun": "^1.3.14"
+  }
+}
