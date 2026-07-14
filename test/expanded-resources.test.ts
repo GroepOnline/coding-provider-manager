@@ -1,13 +1,22 @@
+import os from "node:os";
 import fs from "node:fs/promises";
-import { describe, expect, it } from "vitest";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { planMcpResources } from "../src/resources/apply.js";
 import { upsertResource } from "../src/resources/registry.js";
 
-const home = "/tmp/cpm-expanded-resource-test";
+const homes: string[] = [];
+afterEach(async () => Promise.all(homes.splice(0).map((home) => fs.rm(home, { recursive: true, force: true }))));
+
+async function tempHome(): Promise<string> {
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), "cpm-expanded-resource-"));
+  homes.push(home);
+  return home;
+}
 
 describe("expanded MCP renderers", () => {
   it("renders one shared Codex MCP block with env_vars and remote OAuth metadata", async () => {
-    await fs.rm(home, { recursive: true, force: true });
+    const home = await tempHome();
     await upsertResource(home, {
       id: "local-tools",
       kind: "mcp",
@@ -35,7 +44,7 @@ describe("expanded MCP renderers", () => {
   });
 
   it("renders Gemini and Cursor MCP configuration with environment references", async () => {
-    await fs.rm(home, { recursive: true, force: true });
+    const home = await tempHome();
     await upsertResource(home, {
       id: "remote",
       kind: "mcp",
@@ -46,9 +55,9 @@ describe("expanded MCP renderers", () => {
     });
     const gemini = await planMcpResources(home, "gemini-cli");
     const cursor = await planMcpResources(home, "cursor");
-    expect(gemini.path).toContain(".gemini/settings.json");
+    expect(gemini.path).toBe(path.join(home, ".gemini", "settings.json"));
     expect(gemini.after).toContain("$AUTH_TOKEN");
-    expect(cursor.path).toContain(".cursor/mcp.json");
+    expect(cursor.path).toBe(path.join(home, ".cursor", "mcp.json"));
     expect(cursor.after).toContain("${AUTH_TOKEN}");
   });
 });
