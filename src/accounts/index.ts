@@ -202,6 +202,98 @@ function githubAccounts(payload: unknown): ManagedAccount[] {
   return out;
 }
 
+/**
+ * ChefGroep vault — source of truth for OAuth/file account profiles.
+ * CPM keeps encrypted API keys; account capture/switch/backup lives in chefvault.
+ */
+const chefvaultDriver: AccountDriver = {
+  id: "chefvault",
+  displayName: "ChefGroep Vault Accounts",
+  command: "chefvault",
+  supportsUsage: true,
+  async list() {
+    const result = await firstSuccessful(this.command, [
+      ["--json", "accounts", "list"],
+      ["accounts", "list", "--json"],
+    ]);
+    const parsed = parseJsonOutput(result.stdout);
+    const root = asRecord(parsed);
+    const accounts = Array.isArray(root?.accounts) ? root.accounts : [];
+    const activeId = typeof root?.activeId === "string" ? root.activeId : null;
+    const activeByProvider = asRecord(root?.activeByProvider) ?? {};
+    return accounts.flatMap((item) => {
+      const record = asRecord(item);
+      if (!record) return [];
+      const id = stringValue(record, ["id"]);
+      if (!id) return [];
+      const provider = stringValue(record, ["provider"]);
+      const active =
+        activeId === id ||
+        (provider !== undefined && activeByProvider[provider] === id) ||
+        booleanValue(record, ["active"], false);
+      return [
+        {
+          id,
+          label: stringValue(record, ["label", "name"]),
+          email: stringValue(record, ["email"]),
+          username: provider,
+          active,
+          enabled: true,
+          metadata: redactMetadata(record),
+        },
+      ];
+    });
+  },
+  async use(selector) {
+    await firstSuccessful(this.command, [
+      ["--json", "accounts", "switch", selector],
+      ["accounts", "switch", selector, "--json"],
+    ]);
+  },
+  async status() {
+    const result = await firstSuccessful(this.command, [
+      ["--json", "accounts", "status"],
+      ["accounts", "status", "--json"],
+    ]);
+    return parseJsonOutput(result.stdout) ?? { text: result.stdout.trim() };
+  },
+  async usage() {
+    try {
+      const result = await firstSuccessful(this.command, [
+        ["--json", "accounts", "status"],
+        ["accounts", "status", "--json"],
+      ]);
+      const parsed = parseJsonOutput(result.stdout);
+      const root = asRecord(parsed);
+      const usage = asRecord(root?.usage);
+      const today = asRecord(usage?.today);
+      const requests = typeof today?.requests === "number" ? today.requests : undefined;
+      const totalTokens = typeof today?.totalTokens === "number" ? today.totalTokens : undefined;
+      const summary =
+        requests !== undefined
+          ? `OCX today: ${requests} requests` +
+            (totalTokens !== undefined ? `, ${totalTokens} tokens` : "")
+          : "ChefVault status available";
+      return usageFromPayload(this.id, {
+        summary,
+        requests,
+        totalTokens,
+        ocx: root?.ocx,
+        usage,
+      });
+    } catch (error) {
+      return {
+        target: this.id,
+        source: "account-driver",
+        available: false,
+        fetchedAt: new Date().toISOString(),
+        summary: "ChefVault usage unavailable",
+        error: (error as Error).message,
+      };
+    }
+  },
+};
+
 const githubDriver: AccountDriver = {
   id: "github",
   displayName: "GitHub CLI Accounts",
@@ -225,7 +317,12 @@ const githubDriver: AccountDriver = {
   },
 };
 
-export const accountDrivers: AccountDriver[] = [codexDriver, openCodeDriver, githubDriver];
+export const accountDrivers: AccountDriver[] = [
+  chefvaultDriver,
+  codexDriver,
+  openCodeDriver,
+  githubDriver,
+];
 
 export function getAccountDriver(id: string): AccountDriver {
   const driver = accountDrivers.find((item) => item.id === id);

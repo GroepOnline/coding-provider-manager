@@ -275,7 +275,7 @@ export async function selectBestProviderKey(home: string, providerOrId: Provider
 }
 
 export async function fetchUsageTarget(home: string, target: string, options: { allKeys?: boolean; alias?: string } = {}): Promise<UsageResult[]> {
-  if (["codex-multi-auth", "opencode-codex-multi-auth", "github"].includes(target)) {
+  if (["chefvault", "codex-multi-auth", "opencode-codex-multi-auth", "github"].includes(target)) {
     return [await accountDriverUsage(target)];
   }
   const provider = getProvider(target);

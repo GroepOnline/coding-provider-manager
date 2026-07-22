@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Account driver `chefvault` — delegates OAuth/file account list/switch/status/usage to ChefGroep Vault (`chefvault`), the source of truth for Codex/Claude/Pi/Cursor/ocx profiles. CPM keeps the encrypted API-key vault.
+
+### Changed
+
+- Docs: `docs/accounts-and-usage.md` describes the chefvault / ocx / CPM split.
+
 ## [0.4.1] - 2026-07-14
 
 ### Added

@@ -232,7 +232,11 @@ export interface SyncBundle {
 }
 
 
-export type AccountDriverId = "codex-multi-auth" | "opencode-codex-multi-auth" | "github";
+export type AccountDriverId =
+  | "chefvault"
+  | "codex-multi-auth"
+  | "opencode-codex-multi-auth"
+  | "github";
 
 export interface ManagedAccount {
   id: string;
