@@ -73,3 +73,20 @@ export function resolveChefVaultSecurityUrl(config: ProviderSecurityConfig): str
     || "http://127.0.0.1:8323"
   );
 }
+
+/** Bearer token for protected ChefVault provider-security routes (`/v1/refs/*`). Env is SSOT. */
+export function resolveChefVaultSecurityToken(_config?: ProviderSecurityConfig): string | undefined {
+  return process.env.CHEF_PROVIDER_SECURITY_TOKEN?.trim() || undefined;
+}
+
+/** Optional workload identity headers; only sent when the corresponding env vars are set. */
+export function resolveChefVaultIdentityHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const workloadId = process.env.CHEF_WORKLOAD_ID?.trim();
+  const hostId = process.env.CHEF_HOST_ID?.trim();
+  const actor = process.env.CHEF_ACTOR?.trim();
+  if (workloadId) headers["x-chef-workload-id"] = workloadId;
+  if (hostId) headers["x-chef-host-id"] = hostId;
+  if (actor) headers["x-chef-actor"] = actor;
+  return headers;
+}
