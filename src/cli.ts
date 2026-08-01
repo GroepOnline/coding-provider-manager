@@ -48,6 +48,16 @@ import { planMcpResources, resourceRuntimeEnv } from "./resources/apply.js";
 import { createSyncBundle, importSyncBundle, sshPipe } from "./core/sync.js";
 import { authFlows, getAuthFlow } from "./auth/catalog.js";
 import { runAuthCommand } from "./auth/run.js";
+import {
+  applyDesiredPolicy,
+  doctorProviderSecurity,
+  ensureProviderSecurityConfig,
+  planDesiredPolicy,
+  rollbackDesiredPolicy,
+  validateDesiredPolicyFile,
+} from "./provider-security/policy-ops.js";
+import { loadProviderSecurityConfig } from "./provider-security/config.js";
+import type { DesiredPolicyDocument } from "./provider-security/types.js";
 import type {
   AdapterContext,
   ManagedResource,
@@ -1049,6 +1059,117 @@ program.command("completion")
       default:
         throw new Error(`Unsupported shell for completion: ${shell}. Use powershell, bash, or zsh.`);
     }
+  });
+
+const policyCommand = program.command("policy").description("Provider Security Plane — desired policy for OpenCodex (no raw secrets in fleet output)");
+policyCommand.command("config")
+  .description("Show or update provider-security backend configuration")
+  .option("--fleet", "enable fleet mode (requires chefvault backend)")
+  .option("--no-fleet", "disable fleet mode")
+  .option("--backend <id>", "secret backend: chefvault or cpm-local")
+  .option("--chefvault-url <url>", "ChefVault provider-security base URL")
+  .option("--json", "machine-readable output")
+  .action(async (options) => {
+    const patch: Parameters<typeof ensureProviderSecurityConfig>[1] = {};
+    // Commander folds --fleet/--no-fleet into a single tri-state `fleet` value.
+    if (options.fleet === true) patch.fleetMode = true;
+    if (options.fleet === false) patch.fleetMode = false;
+    if (options.backend) patch.secretBackend = options.backend;
+    if (options.chefvaultUrl) patch.chefvaultUrl = options.chefvaultUrl;
+    const config = Object.keys(patch).length ? await ensureProviderSecurityConfig(home, patch) : await loadProviderSecurityConfig(home);
+    if (options.json) console.log(JSON.stringify(config, null, 2));
+    else {
+      console.log(`fleetMode=${config.fleetMode}  secretBackend=${config.secretBackend}  target=${config.targetRuntime}`);
+      console.log(`chefvaultUrl=${config.chefvaultUrl ?? process.env.CHEF_PROVIDER_SECURITY_URL ?? "http://127.0.0.1:8323"}`);
+    }
+  });
+policyCommand.command("plan")
+  .description("Plan OpenCodex desired policy from saved provider preferences")
+  .option("--json", "machine-readable output")
+  .action(async (options) => {
+    const plan = await planDesiredPolicy(home);
+    if (options.json) console.log(JSON.stringify(plan, null, 2));
+    else {
+      console.log(pc.bold("Provider Security Plane plan"));
+      for (const line of plan.changes) console.log(`  • ${line}`);
+      for (const warning of plan.warnings ?? []) console.log(pc.yellow(`  ! ${warning}`));
+      console.log(JSON.stringify(plan.draft, null, 2));
+    }
+  });
+policyCommand.command("validate")
+  .description("Validate current or planned desired policy (rejects raw credentials in fleet output)")
+  .option("--json", "machine-readable output")
+  .action(async (options) => {
+    // Validate the document supplied on stdin when there is one; fall back to a fresh draft otherwise.
+    const supplied = process.stdin.isTTY ? "" : (await readStdin()).trim();
+    let document: DesiredPolicyDocument;
+    if (supplied) {
+      try {
+        document = JSON.parse(supplied) as DesiredPolicyDocument;
+      } catch (error) {
+        throw new Error(`policy validate could not parse stdin JSON: ${(error as Error).message}`, { cause: error });
+      }
+    } else {
+      document = (await planDesiredPolicy(home)).draft;
+    }
+    const result = await validateDesiredPolicyFile(home, document);
+    if (options.json) console.log(JSON.stringify(result, null, 2));
+    else {
+      console.log(result.ok ? pc.green("✓ policy valid") : pc.red("✗ policy invalid"));
+      for (const issue of result.issues) console.log(`  ${issue.code}: ${issue.message}${issue.path ? ` (${issue.path})` : ""}`);
+    }
+    if (!result.ok) process.exitCode = 1;
+  });
+policyCommand.command("apply")
+  .description("Apply revisioned desired policy to OpenCodex without raw secrets")
+  .option("--yes", "apply without confirmation")
+  .option("--json", "machine-readable output")
+  .action(async (options) => {
+    const plan = await planDesiredPolicy(home);
+    const validation = await validateDesiredPolicyFile(home, plan.draft, plan.config);
+    if (!validation.ok) throw new Error(`Policy validation failed: ${validation.issues.map((item) => item.message).join("; ")}`);
+    for (const warning of plan.warnings ?? []) console.log(pc.yellow(warning));
+    let confirmed = Boolean(options.yes);
+    if (!confirmed) {
+      if (!process.stdin.isTTY) throw new Error("policy apply requires --yes when stdin is not a TTY");
+      confirmed = await confirm({ message: `Apply revision ${plan.draft.revision} → ${plan.targetPath}?`, default: false });
+    }
+    if (!confirmed) {
+      console.log(pc.yellow("policy apply aborted"));
+      return;
+    }
+    const result = await applyDesiredPolicy(home, plan.draft, { yes: true });
+    if (options.json) console.log(JSON.stringify(result, null, 2));
+    else console.log(pc.green(`Applied revision ${result.revision} → ${result.targetPath}${result.backupId ? ` (backup ${result.backupId})` : ""}`));
+  });
+policyCommand.command("rollback")
+  .description("Rollback OpenCodex provider policy to the previous revision")
+  .argument("[revision]", "revision id to roll back from")
+  .option("--json", "machine-readable output")
+  .action(async (revision, options) => {
+    const result = await rollbackDesiredPolicy(home, revision);
+    if (options.json) console.log(JSON.stringify(result, null, 2));
+    else console.log(pc.green(`Rolled back to revision ${result.revision} → ${result.targetPath}`));
+  });
+policyCommand.command("doctor")
+  .description("Validate provider-security config, ChefVault reachability, and active OpenCodex policy")
+  .option("--json", "machine-readable output")
+  .action(async (options) => {
+    const result = await doctorProviderSecurity(home);
+    if (options.json) console.log(JSON.stringify(result, null, 2));
+    else {
+      console.log(pc.bold("Provider Security Plane doctor"));
+      console.log(`fleetMode=${result.config.fleetMode} secretBackend=${result.config.secretBackend}`);
+      if (result.chefvaultReachable !== undefined) {
+        console.log(`chefvault=${result.chefvaultReachable ? pc.green("reachable") : pc.red("unreachable")}`);
+      }
+      console.log(`activeRevision=${result.activeRevision ?? "none"}`);
+      console.log(`target=${result.targetPath}`);
+      for (const issue of result.issues.filter((item) => item.code !== "no-backups")) {
+        console.log(`${result.ok ? pc.yellow("!") : pc.red("✗")} ${issue.code}: ${issue.message}`);
+      }
+    }
+    if (!result.ok) process.exitCode = 1;
   });
 
 program.command("backups").description("List configuration backups").action(async () => {

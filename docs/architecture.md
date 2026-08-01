@@ -1,5 +1,9 @@
 # CPM architecture
 
+## Provider Security Plane ownership
+
+ChefVault owns secrets, CPM owns desired policy, OpenCodex owns runtime enforcement. See [provider-security-plane.md](./provider-security-plane.md) (PSP-007).
+
 ## Control-plane layers
 
 CPM separates:
