@@ -93,6 +93,30 @@ describe("ChefVaultProviderSecurityClient", () => {
     expect(probe.ok).toBe(true);
   });
 
+  it("probeAuthentication fails on a 500 response", async () => {
+    process.env.CHEF_PROVIDER_SECURITY_TOKEN = TOKEN;
+
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ error: "boom" }), { status: 500 }));
+
+    const client = new ChefVaultProviderSecurityClient(defaultProviderSecurityConfig());
+    const probe = await client.probeAuthentication();
+    expect(probe.ok).toBe(false);
+    expect(probe.error).toMatch(/\(500\)/);
+  });
+
+  it("probeAuthentication fails when the request cannot be sent", async () => {
+    process.env.CHEF_PROVIDER_SECURITY_TOKEN = TOKEN;
+
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("connect ECONNREFUSED 127.0.0.1:8080");
+    });
+
+    const client = new ChefVaultProviderSecurityClient(defaultProviderSecurityConfig());
+    const probe = await client.probeAuthentication();
+    expect(probe.ok).toBe(false);
+    expect(probe.error).toMatch(/ECONNREFUSED/);
+  });
+
   it("probeAuthentication fails when token is rejected", async () => {
     process.env.CHEF_PROVIDER_SECURITY_TOKEN = TOKEN;
 

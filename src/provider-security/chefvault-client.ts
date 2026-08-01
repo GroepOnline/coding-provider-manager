@@ -73,12 +73,11 @@ export class ChefVaultProviderSecurityClient {
       return { ok: false, error: "CHEF_PROVIDER_SECURITY_TOKEN is not set (required for /v1/refs/*)" };
     }
     const status = await this.inspectRef("chefvault://_probe/auth");
-    if (status.ok) return { ok: true };
-    if (status.error?.includes("(401)") || status.error?.includes("(403)")) {
-      return { ok: false, error: status.error };
-    }
-    // 404 and other non-auth failures mean the token was accepted.
-    return { ok: true };
+    // 200 means the probe ref resolved; 404 means ChefVault accepted the token
+    // and only the ref is missing. Anything else (transport error, 5xx, 401/403)
+    // is not proof that authentication succeeded.
+    if (status.ok || status.error?.includes("(404)")) return { ok: true };
+    return { ok: false, error: status.error ?? "ChefVault authentication probe failed" };
   }
 
   /** Resolve ref metadata without returning secret material. */
