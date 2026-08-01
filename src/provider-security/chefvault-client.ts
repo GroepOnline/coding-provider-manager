@@ -1,5 +1,9 @@
 import type { ProviderSecurityConfig } from "./types.js";
-import { resolveChefVaultSecurityUrl } from "./config.js";
+import {
+  resolveChefVaultIdentityHeaders,
+  resolveChefVaultSecurityToken,
+  resolveChefVaultSecurityUrl,
+} from "./config.js";
 
 export interface ChefVaultRefStatus {
   ref: string;
@@ -15,17 +19,43 @@ export interface ChefVaultHealth {
   error?: string;
 }
 
+export interface ChefVaultAuthProbe {
+  ok: boolean;
+  error?: string;
+}
+
 function normalizeRef(ref: string): string {
   return ref.startsWith("chefvault://") ? ref : `chefvault://${ref.replace(/^\/+/, "")}`;
+}
+
+function authErrorMessage(status: number, context: "ref probe" | "auth probe"): string {
+  if (status === 401) {
+    return `ChefVault ${context} unauthorized (401): missing or invalid Bearer token`;
+  }
+  if (status === 403) {
+    return `ChefVault ${context} forbidden (403): Bearer token rejected or identity headers mismatch`;
+  }
+  return `ChefVault ${context} failed (${status})`;
 }
 
 export class ChefVaultProviderSecurityClient {
   readonly baseUrl: string;
   readonly timeoutMs: number;
+  readonly token?: string;
 
   constructor(config: ProviderSecurityConfig, timeoutMs = 5_000) {
     this.baseUrl = resolveChefVaultSecurityUrl(config).replace(/\/+$/, "");
     this.timeoutMs = timeoutMs;
+    this.token = resolveChefVaultSecurityToken(config);
+  }
+
+  protectedHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      accept: "application/json",
+      ...resolveChefVaultIdentityHeaders(),
+    };
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+    return headers;
   }
 
   async health(): Promise<ChefVaultHealth> {
@@ -37,12 +67,44 @@ export class ChefVaultProviderSecurityClient {
     }
   }
 
+  /** Probe Bearer auth against a protected route without requiring a real ref to exist. */
+  async probeAuthentication(): Promise<ChefVaultAuthProbe> {
+    if (!this.token) {
+      return { ok: false, error: "CHEF_PROVIDER_SECURITY_TOKEN is not set (required for /v1/refs/*)" };
+    }
+    const status = await this.inspectRef("chefvault://_probe/auth");
+    if (status.ok) return { ok: true };
+    if (status.error?.includes("(401)") || status.error?.includes("(403)")) {
+      return { ok: false, error: status.error };
+    }
+    // 404 and other non-auth failures mean the token was accepted.
+    return { ok: true };
+  }
+
   /** Resolve ref metadata without returning secret material. */
   async inspectRef(ref: string): Promise<ChefVaultRefStatus> {
     const normalized = normalizeRef(ref);
+    if (!this.token) {
+      return {
+        ref: normalized,
+        ok: false,
+        error: "ChefVault ref probe requires CHEF_PROVIDER_SECURITY_TOKEN (Bearer auth)",
+      };
+    }
     try {
       const encoded = encodeURIComponent(normalized);
-      const response = await fetch(`${this.baseUrl}/v1/refs/${encoded}`, { method: "GET", signal: AbortSignal.timeout(this.timeoutMs) });
+      const response = await fetch(`${this.baseUrl}/v1/refs/${encoded}`, {
+        method: "GET",
+        headers: this.protectedHeaders(),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+      if (response.status === 401 || response.status === 403) {
+        return {
+          ref: normalized,
+          ok: false,
+          error: authErrorMessage(response.status, "ref probe"),
+        };
+      }
       if (!response.ok) {
         return { ref: normalized, ok: false, error: `ChefVault ref probe failed (${response.status})` };
       }

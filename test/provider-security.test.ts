@@ -11,6 +11,7 @@ import {
 } from "../src/provider-security/config.js";
 import {
   applyDesiredPolicy,
+  doctorProviderSecurity,
   opencodexPolicyPath,
   planDesiredPolicy,
   rollbackDesiredPolicy,
@@ -33,11 +34,13 @@ import type { DesiredPolicyDocument } from "../src/provider-security/types.js";
 const homes: string[] = [];
 afterEach(async () => {
   vi.unstubAllGlobals();
+  delete process.env.CHEF_PROVIDER_SECURITY_TOKEN;
   await Promise.all(homes.splice(0).map((home) => fs.rm(home, { recursive: true, force: true })));
 });
 
 /** Pretend every chefvault:// ref resolves, so ref probing does not require a live service. */
 function stubChefVaultRefs(resolvable = true): void {
+  process.env.CHEF_PROVIDER_SECURITY_TOKEN = process.env.CHEF_PROVIDER_SECURITY_TOKEN ?? "test-token";
   vi.stubGlobal("fetch", async () => new Response(
     JSON.stringify({ fingerprint: "sha256:test" }),
     { status: resolvable ? 200 : 404, headers: { "content-type": "application/json" } },
@@ -226,5 +229,43 @@ describe("provider security plane", () => {
   it("scanRawCredentials detects inline apiKey fields", () => {
     const issues = scanRawCredentials('{"apiKey":"supersec1"}');
     expect(issues.some((item) => item.code === "raw-api-key-field")).toBe(true);
+  });
+
+  it("doctor distinguishes healthz reachability from Bearer authentication", async () => {
+    const home = await tempHome();
+    const config = {
+      ...defaultProviderSecurityConfig(),
+      fleetMode: true,
+      secretBackend: "chefvault" as const,
+    };
+    await saveProviderSecurityConfig(home, config);
+
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.endsWith("/healthz")) return new Response("ok", { status: 200 });
+      return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+    });
+
+    delete process.env.CHEF_PROVIDER_SECURITY_TOKEN;
+    const missingToken = await doctorProviderSecurity(home);
+    expect(missingToken.chefvaultReachable).toBe(true);
+    expect(missingToken.chefvaultAuthenticated).toBe(false);
+    expect(missingToken.issues.some((item) => item.code === "chefvault-token-missing")).toBe(true);
+
+    process.env.CHEF_PROVIDER_SECURITY_TOKEN = "test-token";
+    const badToken = await doctorProviderSecurity(home);
+    expect(badToken.chefvaultReachable).toBe(true);
+    expect(badToken.chefvaultAuthenticated).toBe(false);
+    expect(badToken.issues.some((item) => item.code === "chefvault-unauthenticated")).toBe(true);
+
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.endsWith("/healthz")) return new Response("ok", { status: 200 });
+      return new Response(JSON.stringify({ fingerprint: "sha256:test" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const ok = await doctorProviderSecurity(home);
+    expect(ok.chefvaultReachable).toBe(true);
+    expect(ok.chefvaultAuthenticated).toBe(true);
   });
 });

@@ -77,6 +77,9 @@ export interface PolicyDoctorResult {
   config: ProviderSecurityConfig;
   activeRevision?: string;
   targetPath: string;
+  /** `/healthz` responded successfully (unauthenticated). */
   chefvaultReachable?: boolean;
+  /** Bearer token accepted on a protected `/v1/refs/*` probe. */
+  chefvaultAuthenticated?: boolean;
   issues: PolicyValidationIssue[];
 }
