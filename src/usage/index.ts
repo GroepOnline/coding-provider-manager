@@ -3,7 +3,7 @@ import type { ProviderId, ProviderProfile, UsageResult } from "../types.js";
 import { atomicWrite, readText } from "../core/fs.js";
 import { cpmRoot } from "../core/paths.js";
 import { listSecrets, providerScope, resolveSecret, useSecret } from "../core/vault.js";
-import { accountDriverUsage } from "../accounts/index.js";
+import { accountDrivers, accountDriverUsage } from "../accounts/index.js";
 import { getProvider } from "../providers/catalog.js";
 
 interface UsageCache {
@@ -275,7 +275,7 @@ export async function selectBestProviderKey(home: string, providerOrId: Provider
 }
 
 export async function fetchUsageTarget(home: string, target: string, options: { allKeys?: boolean; alias?: string } = {}): Promise<UsageResult[]> {
-  if (["codex-multi-auth", "opencode-codex-multi-auth", "github"].includes(target)) {
+  if (accountDrivers.some((driver) => driver.id === target)) {
     return [await accountDriverUsage(target)];
   }
   const provider = getProvider(target);
