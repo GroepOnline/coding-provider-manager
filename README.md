@@ -6,7 +6,7 @@ Version **0.4** adds a full OpenTUI dashboard, a stable JSONL agent protocol, pr
 
 | | |
 |---|---|
-| Package | `@onlinechefgroep/coding-provider-manager` |
+| Package | `@groeponline/coding-provider-manager` |
 | CLI | `cpm` |
 | License | [MIT](LICENSE) |
 | Node | **20+** |
@@ -65,7 +65,7 @@ If `npm link` fails with an EPERM / path-length error, prefer `node .\dist\cli.j
 
 ```powershell
 npm pack
-npm install -g .\onlinechefgroep-coding-provider-manager-0.4.0.tgz
+npm install -g .\groeponline-coding-provider-manager-0.4.0.tgz
 cpm --version
 ```
 
@@ -74,9 +74,9 @@ OpenTUI is optional. Package managers that omit optional dependencies keep every
 ### Uninstall
 
 ```powershell
-npm unlink -g @onlinechefgroep/coding-provider-manager
+npm unlink -g @groeponline/coding-provider-manager
 # or, if installed from a tarball:
-npm uninstall -g @onlinechefgroep/coding-provider-manager
+npm uninstall -g @groeponline/coding-provider-manager
 ```
 
 ## Quick start
@@ -280,7 +280,7 @@ cpm pi-zai install
 cpm pi-zai info
 ```
 
-CPM reuses verified model and thinking metadata from `@onlinechefgroep/pi-zai`. The extension remains responsible for Z.AI request normalization, cache intelligence, session affinity, quota diagnostics, and privacy-first local metrics.
+CPM reuses verified model and thinking metadata from `@groeponline/pi-zai`. The extension remains responsible for Z.AI request normalization, cache intelligence, session affinity, quota diagnostics, and privacy-first local metrics.
 
 ## Security properties
 
@@ -335,4 +335,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for a short contributor checklist.
 
 ## License
 
-[MIT](LICENSE) © OnlineChefGroep
+[MIT](LICENSE) © GroepOnline

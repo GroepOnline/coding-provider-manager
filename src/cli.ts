@@ -989,9 +989,9 @@ syncCommand.command("pull")
     console.log(pc.green(`Pulled CPM state from ${host}${options.secrets ? " including secrets" : " without secrets"}.`));
   });
 
-const piZaiCommand = program.command("pi-zai").description("Manage the OnlineChefGroep Pi Z.AI extension");
+const piZaiCommand = program.command("pi-zai").description("Manage the GroepOnline Pi Z.AI extension");
 piZaiCommand.command("install").action(async () => {
-  process.exitCode = await runInherited("pi", ["install", "npm:@onlinechefgroep/pi-zai"], {});
+  process.exitCode = await runInherited("pi", ["install", "npm:@groeponline/pi-zai"], {});
 });
 piZaiCommand.command("info").action(() => {
   console.log("pi-zai remains the runtime owner of Z.AI thinking normalization, cache metrics, session affinity and local observability.");

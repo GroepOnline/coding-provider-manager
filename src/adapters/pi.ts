@@ -5,13 +5,13 @@ import { unsupportedByPolicy } from "./helpers.js";
 
 export const piAdapter: ToolAdapter = {
   id: "pi",
-  displayName: "Pi + OnlineChefGroep pi-zai",
+  displayName: "Pi + GroepOnline pi-zai",
   command: "pi",
   async plan(ctx) {
     const policy = unsupportedByPolicy(ctx, "pi");
     if (policy) return { tool: "pi", status: "unsupported", notes: policy };
     if (ctx.provider.id !== "zai-coding") {
-      return { tool: "pi", status: "unsupported", notes: ["The managed Pi extension profile currently targets OnlineChefGroep/pi-zai and Z.AI only."] };
+      return { tool: "pi", status: "unsupported", notes: ["The managed Pi extension profile currently targets GroepOnline/pi-zai and Z.AI only."] };
     }
     const agentDir = process.env.PI_AGENT_DIR || path.join(ctx.home, ".pi", "agent");
     const file = path.join(agentDir, "settings.json");
@@ -35,7 +35,7 @@ export const piAdapter: ToolAdapter = {
       after,
       notes: [
         "Applies pi-zai's privacy-first defaults and local metrics configuration.",
-        "Install the extension once with: pi install npm:@onlinechefgroep/pi-zai",
+        "Install the extension once with: pi install npm:@groeponline/pi-zai",
         "GLM-5.2 off/high/max mapping and clear_thinking behavior stay owned by pi-zai, not duplicated in CPM runtime code.",
       ],
     };

@@ -12,7 +12,7 @@ Matrix of coding-surface adapters registered in `src/adapters/index.ts`. Injecti
 
 | Tool ID | Display name | Source |
 |---|---|---|
-| `pi` | Pi + OnlineChefGroep pi-zai | `pi.ts` (default) |
+| `pi` | Pi + GroepOnline pi-zai | `pi.ts` (default) |
 | `claude` | Claude Code | `claude.ts` (default) |
 | `opencode` | OpenCode | `opencode.ts` (default) |
 | `factory` | Factory Droid | `factory.ts` (default) |

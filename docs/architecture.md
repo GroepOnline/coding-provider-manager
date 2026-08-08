@@ -71,4 +71,4 @@ Normal bundles include state and resources only. CPM vault data is opt-in with `
 
 ## Pi Z.AI boundary
 
-Provider setup remains in CPM. Request normalization, thinking mapping, cache stability, runtime telemetry and local metrics remain in `@onlinechefgroep/pi-zai`.
+Provider setup remains in CPM. Request normalization, thinking mapping, cache stability, runtime telemetry and local metrics remain in `@groeponline/pi-zai`.

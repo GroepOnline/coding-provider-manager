@@ -67,7 +67,7 @@ jobs:
             npm init -y | Out-Null
             # Non-interactive CLI only; skip optional OpenTUI/Bun natives for pack smoke.
             npm install --omit=optional $tarballPath
-            $cli = Join-Path $smokeRoot 'node_modules/@onlinechefgroep/coding-provider-manager/dist/cli.js'
+            $cli = Join-Path $smokeRoot 'node_modules/@groeponline/coding-provider-manager/dist/cli.js'
             if (-not (Test-Path -LiteralPath $cli)) { throw "Installed CLI missing: $cli" }
             Write-Host '==> cpm --version'
             node $cli --version

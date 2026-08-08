@@ -1,4 +1,4 @@
-# Tag-triggered release pipeline for @onlinechefgroep/coding-provider-manager.
+# Tag-triggered release pipeline for @groeponline/coding-provider-manager.
 #
 # Trigger: push a version tag matching v* (e.g. v0.4.1).
 #
@@ -6,7 +6,7 @@
 #   GITHUB_TOKEN — provided automatically; used to create the GitHub Release.
 #   NPM_TOKEN    — OPTIONAL repository secret (Settings → Secrets and variables
 #                  → Actions). npm automation token with publish rights for the
-#                  @onlinechefgroep scope. When absent, the npm-publish job
+#                  @groeponline scope. When absent, the npm-publish job
 #                  completes successfully without publishing (soft skip).
 #
 name: Release
@@ -143,7 +143,7 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
-          scope: "@onlinechefgroep"
+          scope: "@groeponline"
 
       - name: Detect NPM_TOKEN
         id: token

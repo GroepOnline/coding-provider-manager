@@ -1,5 +1,5 @@
 {
-  "name": "@onlinechefgroep/coding-provider-manager",
+  "name": "@groeponline/coding-provider-manager",
   "version": "0.4.1",
   "description": "Interactive and agent-native control plane for multi-provider keys, OAuth accounts, usage, coding tools, MCP and SSH sync.",
   "type": "module",
@@ -78,13 +78,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OnlineChefGroep/coding-provider-manager.git"
+    "url": "git+https://github.com/GroepOnline/coding-provider-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/OnlineChefGroep/coding-provider-manager/issues"
+    "url": "https://github.com/GroepOnline/coding-provider-manager/issues"
   },
-  "homepage": "https://github.com/OnlineChefGroep/coding-provider-manager#readme",
-  "author": "OnlineChefGroep",
+  "homepage": "https://github.com/GroepOnline/coding-provider-manager#readme",
+  "author": "GroepOnline",
   "overrides": {
     "esbuild": "0.28.1"
   },

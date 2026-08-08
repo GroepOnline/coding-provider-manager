@@ -52,7 +52,7 @@ First public 0.4 line of Coding Provider Manager (`cpm`): a local control plane 
 - Broad coding-surface catalog (automatic writers where a public config contract exists; guided/detected otherwise) — inspect with `cpm apps` / `cpm detect`.
 - MCP / plugin / integration resource registry with renderers for major clients and `cpm resource apply`.
 - SSH sync (`cpm sync push|pull`) with optional in-memory `--secrets` transport; headless installs via `CPM_MASTER_KEY`.
-- Pi Z.AI helper commands (`cpm pi-zai`) integrating `@onlinechefgroep/pi-zai` metadata.
+- Pi Z.AI helper commands (`cpm pi-zai`) integrating `@groeponline/pi-zai` metadata.
 - Doctor, plan/apply, models fetch/select, backups/rollback, and `cpm run` session launchers.
 
 ### Security
@@ -61,6 +61,6 @@ First public 0.4 line of Coding Provider Manager (`cpm`): a local control plane 
 - Generated client configs prefer environment references over literal keys.
 - Account-manager integrations use public CLIs; CPM does not ingest OAuth refresh tokens into the vault.
 
-[Unreleased]: https://github.com/OnlineChefGroep/coding-provider-manager/compare/v0.4.1...HEAD
-[0.4.1]: https://github.com/OnlineChefGroep/coding-provider-manager/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/OnlineChefGroep/coding-provider-manager/releases/tag/v0.4.0
+[Unreleased]: https://github.com/GroepOnline/coding-provider-manager/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/GroepOnline/coding-provider-manager/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/GroepOnline/coding-provider-manager/releases/tag/v0.4.0

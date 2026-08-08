@@ -48,7 +48,7 @@ Packed smoke test:
 
 ```powershell
 npm pack
-npm install -g .\onlinechefgroep-coding-provider-manager-0.4.0.tgz
+npm install -g .\groeponline-coding-provider-manager-0.4.0.tgz
 cpm --version
 ```
 

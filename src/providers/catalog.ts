@@ -149,7 +149,7 @@ export const providers: ProviderProfile[] = [
     },
     notes: [
       "Coding Plan is only emitted for the provider-supported client set.",
-      "GLM metadata, thinking mapping and preserve-thinking behavior are aligned with OnlineChefGroep/pi-zai.",
+      "GLM metadata, thinking mapping and preserve-thinking behavior are aligned with GroepOnline/pi-zai.",
     ],
   },
   {
@@ -250,7 +250,7 @@ export const providers: ProviderProfile[] = [
     models: [model("openrouter/auto", "OpenRouter Auto", "openai-chat", 2_000_000, 256_000, { reasoning: true })],
     allowedTools: chatTools,
     defaultTools: ["opencode", "factory", "aider", "continue", "kilo", "crush"],
-    headers: { "HTTP-Referer": "https://chefgroep.online", "X-Title": "OnlineChefGroep CPM" },
+    headers: { "HTTP-Referer": "https://chefgroep.online", "X-Title": "GroepOnline CPM" },
     capabilities: { streaming: true, toolCall: true },
   },
   {
