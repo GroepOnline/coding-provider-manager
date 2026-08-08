@@ -1,4 +1,4 @@
-# Tag-triggered release pipeline for @onlinechefgroep/coding-provider-manager.
+# Tag-triggered release pipeline for @groeponline/coding-provider-manager.
 #
 # Trigger: push a version tag matching v* (e.g. v0.4.1).
 #
