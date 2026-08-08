@@ -6,7 +6,7 @@ Version **0.4** adds a full OpenTUI dashboard, a stable JSONL agent protocol, pr
 
 | | |
 |---|---|
-| Package | `@onlinechefgroep/coding-provider-manager` |
+| Package | `@groeponline/coding-provider-manager` |
 | CLI | `cpm` |
 | License | [MIT](LICENSE) |
 | Node | **20+** |
@@ -74,9 +74,9 @@ OpenTUI is optional. Package managers that omit optional dependencies keep every
 ### Uninstall
 
 ```powershell
-npm unlink -g @onlinechefgroep/coding-provider-manager
+npm unlink -g @groeponline/coding-provider-manager
 # or, if installed from a tarball:
-npm uninstall -g @onlinechefgroep/coding-provider-manager
+npm uninstall -g @groeponline/coding-provider-manager
 ```
 
 ## Quick start
@@ -177,7 +177,7 @@ cpm accounts use codex-multi-auth work@example.com
 cpm accounts next codex-multi-auth
 
 cpm accounts list github
-cpm accounts use github github.com:OnlineChef
+cpm accounts use github github.com:chefadmin-netizen
 ```
 
 Launch a tool with a selected account for one session:
@@ -185,7 +185,7 @@ Launch a tool with a selected account for one session:
 ```powershell
 cpm run codex --account work@example.com
 cpm run opencode --account 2
-cpm run copilot-cli --account github.com:OnlineChef
+cpm run copilot-cli --account github.com:chefadmin-netizen
 ```
 
 OAuth login is only for initially adding or repairing an account:
@@ -280,7 +280,7 @@ cpm pi-zai install
 cpm pi-zai info
 ```
 
-CPM reuses verified model and thinking metadata from `@onlinechefgroep/pi-zai`. The extension remains responsible for Z.AI request normalization, cache intelligence, session affinity, quota diagnostics, and privacy-first local metrics.
+CPM reuses verified model and thinking metadata from `@groeponline/pi-zai`. The extension remains responsible for Z.AI request normalization, cache intelligence, session affinity, quota diagnostics, and privacy-first local metrics.
 
 ## Security properties
 

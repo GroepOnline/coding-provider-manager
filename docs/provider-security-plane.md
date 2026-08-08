@@ -10,7 +10,7 @@ CPM owns **desired policy** for provider pools targeting OpenCodex. It never per
 | Desired policy | **CPM** (`coding-provider-manager`) | Provider catalog, opaque refs, plan/validate/apply/rollback/doctor |
 | Runtime | **OpenCodex** | Routing, in-memory credential slots, renewal, degraded mode |
 
-See also: [Provider Security Plane plan](https://linear.app/onlinechefgroep/project/provider-security-plane-chefvault-cpm-opencodex-a20d88f3c106) (PSP-007).
+See also: [Provider Security Plane plan](https://linear.app/groeponline/project/provider-security-plane-chefvault-cpm-opencodex-a20d88f3c106) (PSP-007).
 
 ## Secret backends
 
