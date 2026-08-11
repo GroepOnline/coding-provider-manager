@@ -26,7 +26,8 @@ concurrency:
 jobs:
   check-and-pack:
     name: check and pack
-    runs-on: ubuntu-latest
+    # GitHub-hosted runners banned until Actions spending restored (fleet only).
+    runs-on: ${{ github.event_name == 'pull_request' && fromJSON('["self-hosted","Linux","X64","pr-isolated"]') || fromJSON('["self-hosted","Linux","X64","heavy"]') }}
     timeout-minutes: 20
     outputs:
       tarball: ${{ steps.pack.outputs.tarball }}
@@ -65,7 +66,8 @@ jobs:
   github-release:
     name: GitHub Release
     needs: check-and-pack
-    runs-on: ubuntu-latest
+    # GitHub-hosted runners banned until Actions spending restored (fleet only).
+    runs-on: ${{ github.event_name == 'pull_request' && fromJSON('["self-hosted","Linux","X64","pr-isolated"]') || fromJSON('["self-hosted","Linux","X64","heavy"]') }}
     timeout-minutes: 10
 
     steps:
@@ -130,7 +132,8 @@ jobs:
   npm-publish:
     name: npm publish (optional)
     needs: check-and-pack
-    runs-on: ubuntu-latest
+    # GitHub-hosted runners banned until Actions spending restored (fleet only).
+    runs-on: ${{ github.event_name == 'pull_request' && fromJSON('["self-hosted","Linux","X64","pr-isolated"]') || fromJSON('["self-hosted","Linux","X64","heavy"]') }}
     timeout-minutes: 15
 
     steps:
