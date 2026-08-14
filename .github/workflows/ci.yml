@@ -17,8 +17,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # ponytail: Linux-only on push/PR (saves Windows 2x / macOS 10x); full OS matrix only on release tags.
-        os: ${{ startsWith(github.ref, 'refs/tags/v') && fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') || fromJSON('["ubuntu-latest"]') }}
+        # Linux-only for push/PR (saves Windows 2x / macOS 10x Actions minutes).
+        # ci.yml only runs on push/PR — tag builds are handled by release.yml,
+        # so a tag-conditional here would be dead code. Add extra OSes to
+        # release.yml if cross-platform release testing is ever needed.
+        os: [ubuntu-latest]
         node-version: [20, 22]
 
     steps:
@@ -32,7 +35,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # Retry to self-heal transient npm registry / network failures.
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 15
+          command: npm ci
 
       - name: Lint
         run: npm run lint
