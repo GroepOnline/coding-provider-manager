@@ -78,12 +78,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OnlineChefGroep/coding-provider-manager.git"
+    "url": "git+https://github.com/GroepOnline/coding-provider-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/OnlineChefGroep/coding-provider-manager/issues"
+    "url": "https://github.com/GroepOnline/coding-provider-manager/issues"
   },
-  "homepage": "https://github.com/OnlineChefGroep/coding-provider-manager#readme",
+  "homepage": "https://github.com/GroepOnline/coding-provider-manager#readme",
   "author": "OnlineChefGroep",
   "overrides": {
     "esbuild": "0.28.1"
