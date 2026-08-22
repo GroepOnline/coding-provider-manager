@@ -61,6 +61,6 @@ First public 0.4 line of Coding Provider Manager (`cpm`): a local control plane 
 - Generated client configs prefer environment references over literal keys.
 - Account-manager integrations use public CLIs; CPM does not ingest OAuth refresh tokens into the vault.
 
-[Unreleased]: https://github.com/OnlineChefGroep/coding-provider-manager/compare/v0.4.1...HEAD
-[0.4.1]: https://github.com/OnlineChefGroep/coding-provider-manager/compare/v0.4.0...v0.4.1
-[0.4.0]: https://github.com/OnlineChefGroep/coding-provider-manager/releases/tag/v0.4.0
+[Unreleased]: https://github.com/GroepOnline/coding-provider-manager/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/GroepOnline/coding-provider-manager/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/GroepOnline/coding-provider-manager/releases/tag/v0.4.0

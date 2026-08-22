@@ -149,7 +149,7 @@ export const providers: ProviderProfile[] = [
     },
     notes: [
       "Coding Plan is only emitted for the provider-supported client set.",
-      "GLM metadata, thinking mapping and preserve-thinking behavior are aligned with OnlineChefGroep/pi-zai.",
+      "GLM metadata, thinking mapping and preserve-thinking behavior are aligned with GroepOnline/pi-zai.",
     ],
   },
   {

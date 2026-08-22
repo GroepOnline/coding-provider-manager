@@ -11,7 +11,7 @@ export const piAdapter: ToolAdapter = {
     const policy = unsupportedByPolicy(ctx, "pi");
     if (policy) return { tool: "pi", status: "unsupported", notes: policy };
     if (ctx.provider.id !== "zai-coding") {
-      return { tool: "pi", status: "unsupported", notes: ["The managed Pi extension profile currently targets OnlineChefGroep/pi-zai and Z.AI only."] };
+      return { tool: "pi", status: "unsupported", notes: ["The managed Pi extension profile currently targets GroepOnline/pi-zai and Z.AI only."] };
     }
     const agentDir = process.env.PI_AGENT_DIR || path.join(ctx.home, ".pi", "agent");
     const file = path.join(agentDir, "settings.json");
