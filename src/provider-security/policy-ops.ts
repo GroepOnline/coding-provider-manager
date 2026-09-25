@@ -260,8 +260,10 @@ export async function doctorProviderSecurity(home: string): Promise<PolicyDoctor
   }
 
   let chefvaultReachable: boolean | undefined;
+  let chefvaultAuthenticated: boolean | undefined;
   if (config.secretBackend === "chefvault") {
-    const health = await new ChefVaultProviderSecurityClient(config).health();
+    const client = new ChefVaultProviderSecurityClient(config);
+    const health = await client.health();
     chefvaultReachable = health.ok;
     if (!health.ok) {
       issues.push({
@@ -270,6 +272,15 @@ export async function doctorProviderSecurity(home: string): Promise<PolicyDoctor
           ? "ChefVault provider-security endpoint unreachable; fleet mode forbids local fallback"
           : `ChefVault provider-security endpoint unreachable at ${health.url}`,
       });
+    } else {
+      const auth = await client.probeAuthentication();
+      chefvaultAuthenticated = auth.ok;
+      if (!auth.ok) {
+        issues.push({
+          code: auth.error?.includes("not set") ? "chefvault-token-missing" : "chefvault-unauthenticated",
+          message: auth.error ?? "ChefVault Bearer authentication failed on /v1/refs/* probe",
+        });
+      }
     }
   }
 
@@ -295,6 +306,7 @@ export async function doctorProviderSecurity(home: string): Promise<PolicyDoctor
     activeRevision,
     targetPath,
     chefvaultReachable,
+    chefvaultAuthenticated,
     issues,
   };
 }

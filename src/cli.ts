@@ -1081,6 +1081,7 @@ policyCommand.command("config")
     else {
       console.log(`fleetMode=${config.fleetMode}  secretBackend=${config.secretBackend}  target=${config.targetRuntime}`);
       console.log(`chefvaultUrl=${config.chefvaultUrl ?? process.env.CHEF_PROVIDER_SECURITY_URL ?? "http://127.0.0.1:8323"}`);
+      console.log(`chefvaultToken=${process.env.CHEF_PROVIDER_SECURITY_TOKEN?.trim() ? "set (CHEF_PROVIDER_SECURITY_TOKEN)" : "unset"}`);
     }
   });
 policyCommand.command("plan")
@@ -1161,7 +1162,10 @@ policyCommand.command("doctor")
       console.log(pc.bold("Provider Security Plane doctor"));
       console.log(`fleetMode=${result.config.fleetMode} secretBackend=${result.config.secretBackend}`);
       if (result.chefvaultReachable !== undefined) {
-        console.log(`chefvault=${result.chefvaultReachable ? pc.green("reachable") : pc.red("unreachable")}`);
+        console.log(`chefvaultReachable=${result.chefvaultReachable ? pc.green("yes") : pc.red("no")}`);
+      }
+      if (result.chefvaultAuthenticated !== undefined) {
+        console.log(`chefvaultAuthenticated=${result.chefvaultAuthenticated ? pc.green("yes") : pc.red("no")}`);
       }
       console.log(`activeRevision=${result.activeRevision ?? "none"}`);
       console.log(`target=${result.targetPath}`);
