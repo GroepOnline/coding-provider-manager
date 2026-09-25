@@ -22,7 +22,8 @@ jobs:
         # so a tag-conditional here would be dead code. Add extra OSes to
         # release.yml if cross-platform release testing is ever needed.
         os: [ubuntu-latest]
-        node-version: [20, 22]
+        # Vitest 5 requires Node ^22.12 || ^24 || >=26. Node 20 cannot install or run the suite.
+        node-version: [22, 24]
 
     steps:
       - name: Checkout

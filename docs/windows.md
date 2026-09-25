@@ -28,7 +28,7 @@ cpm doctor
 ## Install from source
 
 ```powershell
-node --version   # Node 20+
+node --version   # Node 22.12+
 
 cd <repo-root>
 npm install

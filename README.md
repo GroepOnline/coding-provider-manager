@@ -9,11 +9,11 @@ Version **0.4** adds a full OpenTUI dashboard, a stable JSONL agent protocol, pr
 | Package | `@groeponline/coding-provider-manager` |
 | CLI | `cpm` |
 | License | [MIT](LICENSE) |
-| Node | **20+** |
+| Node | **22.12+** |
 
 ## Requirements
 
-- **Node.js 20 or newer** (`node --version`)
+- **Node.js 22.12 or newer** (`node --version`)
 - Optional: **[@opentui/core](https://www.npmjs.com/package/@opentui/core)** for `cpm` / `cpm tui` (listed as an optional dependency)
 - Optional account managers for OAuth pools: `codex-multi-auth`, `oc-codex-multi-auth`, and/or GitHub CLI (`gh`)
 - SSH client available on `PATH` for `cpm sync …`
@@ -31,7 +31,7 @@ Secrets are never written to the usage cache. Windows path details: [docs/window
 
 ### From source (Windows PowerShell)
 
-Requires **Node.js 20+** on `PATH`. From the repository root (native PowerShell — WSL not required):
+Requires **Node.js 22.12+** on `PATH`. From the repository root (native PowerShell — WSL not required):
 
 ```powershell
 node --version
