@@ -35,7 +35,8 @@
     "ci": "npm run check",
     "verify": "npm run check",
     "smoke": "node dist/cli.js --version && node dist/cli.js agent manifest",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -54,6 +55,9 @@
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^5.0.2",
     "eslint": "^10.7.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.1",
+    "prettier": "^3.10.1",
     "tsup": "^8.5.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.3",
